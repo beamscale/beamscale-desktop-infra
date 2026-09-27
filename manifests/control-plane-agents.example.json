@@ -1,0 +1,50 @@
+{
+  "protocol_version": "bmscl.local-control/v1",
+  "agents": [
+    {
+      "agent_id": "infra:beam-runtime",
+      "kind": "infra_process",
+      "platform": "desktop",
+      "capabilities": [
+        "status_read",
+        "local_deploy",
+        "runtime_start",
+        "runtime_stop",
+        "runtime_restart",
+        "infra_status",
+        "infra_start",
+        "infra_stop",
+        "infra_restart",
+        "logs_read"
+      ],
+      "labels": {
+        "component": "beam-runtime",
+        "owner": "beamscale-desktop-infra"
+      }
+    },
+    {
+      "agent_id": "infra:cloudflare-tunnel",
+      "kind": "infra_process",
+      "platform": "desktop",
+      "capabilities": [
+        "status_read",
+        "infra_status",
+        "infra_start",
+        "infra_stop",
+        "infra_restart",
+        "logs_read",
+        "tunnel_manage"
+      ],
+      "labels": {
+        "component": "cloudflare-tunnel",
+        "owner": "beamscale-desktop-infra"
+      }
+    }
+  ],
+  "security": {
+    "local_admin_transport": "loopback_or_os_ipc",
+    "remote_agent_transport": "outbound_authenticated_gateway",
+    "allow_arbitrary_shell": false,
+    "allow_shared_admin_token_for_remote_agents": false
+  }
+}

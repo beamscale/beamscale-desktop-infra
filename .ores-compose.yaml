@@ -1,0 +1,16 @@
+schema_version: ores.compose.v1
+project: beamscale-desktop
+allow_lazy_start: false
+source:
+  repository: https://github.com/beamscale/beamscale-desktop-daemon.git
+  commit: af3fc197926b33209b6dfcd010bfe3dc7c4c47cc
+  checkout_dir: tmp/dev/beamscale-desktop-daemon
+services:
+  daemon:
+    runtime: host
+    command: ["cargo", "run", "--release"]
+    healthcheck:
+      command: ["curl", "--fail", "--silent", "http://127.0.0.1:9587/health"]
+      interval_ms: 250
+      timeout_ms: 1000
+      retries: 20

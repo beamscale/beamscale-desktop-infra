@@ -1,37 +1,87 @@
 $ErrorActionPreference = "Stop"
+
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $State = if ($env:BMSCL_DESKTOP_STATE) { $env:BMSCL_DESKTOP_STATE } else { Join-Path $RepoRoot ".desktop" }
 $Src = Join-Path $State "src"
 $Bin = Join-Path $State "bin"
+$ManifestPath = Join-Path $RepoRoot "appliance.json"
+
 New-Item -ItemType Directory -Force -Path $Src,$Bin,(Join-Path $State "logs"),(Join-Path $State "runtime") | Out-Null
 
-foreach ($tool in @("git","cargo","rebar3","python")) {
-  if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Missing required tool: $tool" }
+foreach ($tool in @("git","cargo","rebar3","python","gleam","escript")) {
+  if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+    throw "Missing required tool: $tool"
+  }
 }
+
 python (Join-Path $RepoRoot "scripts\validate_manifest.py")
+$Manifest = Get-Content -Raw $ManifestPath | ConvertFrom-Json
 
 function Checkout-Exact([string]$Slug,[string]$Rev,[string]$Dest) {
   if (-not (Test-Path (Join-Path $Dest ".git"))) {
     git clone --filter=blob:none "https://github.com/$Slug.git" $Dest
+    if ($LASTEXITCODE -ne 0) { throw "git clone failed for $Slug" }
   }
   git -C $Dest fetch --quiet origin $Rev
+  if ($LASTEXITCODE -ne 0) { throw "git fetch failed for $Slug@$Rev" }
   git -C $Dest checkout --quiet --detach $Rev
+  if ($LASTEXITCODE -ne 0) { throw "git checkout failed for $Slug@$Rev" }
   $head = (git -C $Dest rev-parse HEAD).Trim()
   if ($head -ne $Rev) { throw "$Slug resolved to $head, expected $Rev" }
 }
 
-Checkout-Exact "beamscale/beamscale-desktop-daemon" "3a42807da31b772016968776c0ff68a9b15f6da4" (Join-Path $Src "desktop-daemon")
-Checkout-Exact "beamscale/bmscl-supervisor" "17956df9b0bbde7d0bb8832a842f8e2cf0ebc504" (Join-Path $Src "supervisor")
-Checkout-Exact "beamscale/bmscl-compiler" "b539cc31d814d78a0c34604762c5060c9ad27e34" (Join-Path $Src "compiler")
-Checkout-Exact "beamscale/bmscl-cli" "eb8405939ecd54f3ccf27c18da0c6ef04807030d" (Join-Path $Src "cli")
+foreach ($component in $Manifest.components) {
+  Checkout-Exact $component.repo $component.rev (Join-Path $Src $component.name)
+}
 
-cargo build --locked --release --manifest-path (Join-Path $Src "desktop-daemon\Cargo.toml")
-cargo build --locked --release --manifest-path (Join-Path $Src "compiler\Cargo.toml")
-cargo build --locked --release --manifest-path (Join-Path $Src "cli\Cargo.toml")
-Push-Location (Join-Path $Src "supervisor"); try { rebar3 as prod release } finally { Pop-Location }
+$InternalCli = $Manifest.clients | Where-Object { $_.role -eq "internal-operator-cli" } | Select-Object -First 1
+if ($null -eq $InternalCli) { throw "Manifest has no internal-operator-cli client" }
+Checkout-Exact $InternalCli.repo $InternalCli.rev (Join-Path $Src $InternalCli.name)
+
+cargo build --release --manifest-path (Join-Path $Src "desktop-daemon\Cargo.toml")
+if ($LASTEXITCODE -ne 0) { throw "desktop daemon build failed" }
+cargo build --release --manifest-path (Join-Path $Src "compiler\Cargo.toml")
+if ($LASTEXITCODE -ne 0) { throw "compiler build failed" }
+cargo build --release --manifest-path (Join-Path $Src "cli\Cargo.toml")
+if ($LASTEXITCODE -ne 0) { throw "external CLI build failed" }
+
+Push-Location (Join-Path $Src "supervisor")
+try {
+  rebar3 compile
+  if ($LASTEXITCODE -ne 0) { throw "supervisor build failed" }
+} finally {
+  Pop-Location
+}
+
+Push-Location (Join-Path $Src $InternalCli.name)
+try {
+  gleam export escript
+  if ($LASTEXITCODE -ne 0) { throw "internal Gleam CLI export failed" }
+} finally {
+  Pop-Location
+}
 
 Copy-Item (Join-Path $Src "desktop-daemon\target\release\beamscale-desktop-daemon.exe") $Bin -Force
 Copy-Item (Join-Path $Src "compiler\target\release\bmscl-compiler.exe") $Bin -Force
 Copy-Item (Join-Path $Src "cli\target\release\bmscl.exe") $Bin -Force
+Copy-Item (Join-Path $Src "$($InternalCli.name)\bmscl_cli") (Join-Path $Bin "bmscl-internal.escript") -Force
 
-"BeamScale desktop appliance bootstrapped at $State"
+$InternalWrapper = Join-Path $Bin "bmscl-internal.cmd"
+@"
+@echo off
+escript "%~dp0bmscl-internal.escript" %*
+"@ | Set-Content -NoNewline -Encoding ascii $InternalWrapper
+
+$EnvFile = Join-Path $State "env.ps1"
+@"
+$env:BMSCL_DESKTOP_HOME = "$(Join-Path $State "runtime")"
+$env:BMSCL_DAEMON_URL = "http://127.0.0.1:9587"
+$env:BMSCL_COMPILER = "$(Join-Path $Bin "bmscl-compiler.exe")"
+$env:BMSCL_SUPERVISOR_ROOT = "$(Join-Path $Src "supervisor")"
+$env:BMSCL_INTERNAL_CLI = "$InternalWrapper"
+$env:PATH = "$Bin;" + $env:PATH
+"@ | Set-Content -Encoding utf8 $EnvFile
+
+Write-Host "BeamScale desktop appliance bootstrapped at $State"
+Write-Host "  external CLI: $(Join-Path $Bin "bmscl.exe")"
+Write-Host "  internal CLI: $InternalWrapper"

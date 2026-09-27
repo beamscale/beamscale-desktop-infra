@@ -14,10 +14,23 @@ jobs:
         with:
           python-version: '3.12'
       - run: python scripts/validate_manifest.py
+      - run: python -m json.tool appliance.json >/dev/null
       - run: bash -n scripts/doctor.sh scripts/bootstrap.sh scripts/up.sh scripts/down.sh scripts/status.sh
       - name: Parse PowerShell bootstrap
         shell: pwsh
         run: '[scriptblock]::Create((Get-Content -Raw scripts/bootstrap.ps1)) | Out-Null'
+      - name: enforce documented origin matches manifest
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path('.')
+          manifest=json.loads((root/'appliance.json').read_text())
+          origin=manifest['host']['public_origin']
+          readme=(root/'README.md').read_text()
+          cloudflare=(root/'cloudflare/config.example.yml').read_text()
+          assert origin in readme, f'{origin} missing from README'
+          assert origin in cloudflare, f'{origin} missing from cloudflare config'
+          PY
       - name: ensure one desired-state authority
         run: test ! -e appliance.toml
       - name: reject duplicate service trees

@@ -28,6 +28,13 @@ if internal != {
 }:
     errors.append("internal CLI profile drifted")
 
+component_by_name = {item.get("name"): item for item in manifest.get("components", [])}
+client_by_name = {item.get("name"): item for item in manifest.get("clients", [])}
+if component_by_name.get("cli", {}).get("repo") != "beamscale/bmscl-cli":
+    errors.append("external CLI component must source beamscale/bmscl-cli")
+if client_by_name.get("cli-gleam", {}).get("repo") != "beamscale/bmscl-cli-gleam":
+    errors.append("internal CLI client must source beamscale/bmscl-cli-gleam")
+
 shell_scripts = [
     root / "scripts" / "up.sh",
     root / "scripts" / "down.sh",
@@ -59,6 +66,10 @@ if "bmscl-internal.escript" not in bootstrap or "gleam export escript" not in bo
 bootstrap_ps1 = (root / "scripts" / "bootstrap.ps1").read_text()
 if "bmscl-internal.escript" not in bootstrap_ps1 or "gleam export escript" not in bootstrap_ps1:
     errors.append("Windows bootstrap must install the Gleam internal CLI")
+if "$EnvLines" not in bootstrap_ps1:
+    errors.append("Windows bootstrap must generate env.ps1 from literal assignment lines")
+if re.search(r'@"\s*\n\$env:BMSCL_', bootstrap_ps1):
+    errors.append("Windows bootstrap must not eagerly expand env.ps1 variable names")
 
 if errors:
     for error in errors:

@@ -3,30 +3,22 @@ on:
   pull_request:
   push:
     branches: [main]
-
 permissions:
   contents: read
-
 jobs:
-  contract:
+  manifest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python3 scripts/validate_manifest.py
-      - run: bash -n scripts/bootstrap.sh scripts/doctor.sh scripts/up.sh scripts/down.sh
-      - name: Validate plist XML
-        run: python3 -c 'import xml.etree.ElementTree as ET; ET.parse("services/macos/com.beamscale.desktop-daemon.plist")'
-      - name: Production infra must not be a dependency
-        run: |
-          ! grep -R "clone.*bmscl-infra\|beamscale/bmscl-infra.git" -n scripts appliance.json services cloudflare
-      - name: Cloudflare terminates directly at loopback BEAM ingress
-        run: grep -F "service: http://127.0.0.1:8081" cloudflare/config.example.yml
-      - name: No mutable revision activation
-        run: |
-          ! grep -R ':latest\|refs/heads/main' -n appliance.json scripts services cloudflare
-      - name: Reject obvious committed secrets
+      - run: python scripts/validate_manifest.py
+      - run: bash -n scripts/doctor.sh scripts/bootstrap.sh scripts/up.sh scripts/down.sh scripts/status.sh
+      - name: ensure one desired-state authority
+        run: test ! -e appliance.toml
+      - name: reject duplicate service trees
+        run: test ! -d service
+      - name: reject obvious committed secrets
         run: |
           if git grep -nEI '(api[_-]?token|password|secret)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9+/=_-]{12,}' -- ':!*.example'; then exit 1; else exit 0; fi

@@ -64,14 +64,17 @@
   "cloudflare": {
     "origin": "http://127.0.0.1:8080",
     "credentials_in_repo": false,
-    "mode": "remotely-managed",
+    "mode": "gated",
     "token_source": "file",
     "token_file_env": "BMSCL_CF_TUNNEL_TOKEN_FILE",
     "hostname_env": "BMSCL_TUNNEL_HOSTNAME",
     "hostname_template": "<installation-id>.<configured-zone>",
     "ingress_paths": [
       "/"
-    ]
+    ],
+    "public_ingress_ready": false,
+    "origin_auth": "dedicated-remote-auth-required",
+    "promotion_reason": "The declared public BEAM ingress is not yet started by the ores-compose local graph; keep tunnel promotion blocked until origin lifecycle and dedicated remote authentication are wired."
   },
   "update": {
     "mode": "exact-revision",
@@ -80,7 +83,9 @@
   },
   "promotion_gates": {
     "private_repo_ci_evidence": false,
-    "desktop_ingress_ci_green": false
+    "desktop_ingress_ci_green": false,
+    "public_ingress_ready": false,
+    "daemon_lockfile_committed": false
   },
   "cli_profiles": {
     "end_user": {
@@ -99,7 +104,7 @@
   "orchestrator": {
     "engine": "ores-compose",
     "config": ".ores-compose.yaml",
-    "public_config": ".ores-compose.public.yaml",
+    "public_config": null,
     "source_role": "desktop-daemon",
     "shutdown_timeout_ms": 5000
   }

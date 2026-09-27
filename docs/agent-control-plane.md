@@ -55,10 +55,10 @@ The queue/lease shape is intentional for phones, laptops behind NAT, and intermi
 Target shape:
 
 ```text
-+bmscl local agents list
-+bmscl local agents get <agent-id>
-+bmscl local dispatch <agent-id> <operation> [--payload file.json]
-+bmscl local deploy --target <agent-id> <artifact-dir>
+bmscl local agents list
+bmscl local agents get <agent-id>
+bmscl local dispatch <agent-id> <operation> [--payload file.json]
+bmscl local deploy --target <agent-id> <artifact-dir>
 ```
 
 Existing `bmscl local runtime ...`, tunnel, keep-awake, and update commands remain convenience commands for the default local daemon/runtime target.

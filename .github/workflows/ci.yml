@@ -16,7 +16,7 @@ jobs:
       - run: python scripts/validate_manifest.py
       - run: python scripts/test_cli_roles.py
       - run: python -m json.tool appliance.json >/dev/null
-      - run: bash -n scripts/doctor.sh scripts/bootstrap.sh scripts/up.sh scripts/down.sh scripts/status.sh
+      - run: bash -n scripts/doctor.sh scripts/bootstrap.sh scripts/up.sh scripts/down.sh scripts/status.sh scripts/install-service.sh scripts/uninstall-service.sh
       - name: Parse PowerShell lifecycle scripts
         shell: pwsh
         run: |
@@ -26,7 +26,9 @@ jobs:
             "scripts/doctor.ps1",
             "scripts/up.ps1",
             "scripts/down.ps1",
-            "scripts/status.ps1"
+            "scripts/status.ps1",
+            "services/windows/install.ps1",
+            "services/windows/uninstall.ps1"
           )) {
             [void][scriptblock]::Create((Get-Content -Raw $path))
           }
@@ -42,6 +44,16 @@ jobs:
           assert origin in readme, f'{origin} missing from README'
           assert origin in cloudflare, f'{origin} missing from cloudflare config'
           PY
+      - name: validate service-manager state wiring
+        run: |
+          set -euo pipefail
+          grep -F 'BMSCL_DESKTOP_HOME=__RUNTIME_DIR__' services/linux/beamscale-desktop-daemon.service
+          grep -F 'ExecStart=__BINARY__' services/linux/beamscale-desktop-daemon.service
+          grep -F '__STATE_DIR__' services/linux/beamscale-desktop-daemon.service
+          grep -F '<key>BMSCL_DESKTOP_HOME</key><string>__RUNTIME_DIR__</string>' services/macos/com.beamscale.desktop-daemon.plist
+          grep -F '__BINARY__' services/macos/com.beamscale.desktop-daemon.plist
+          grep -F 'BMSCL_DESKTOP_HOME' services/windows/install.ps1
+          grep -F '127.0.0.1:9587' services/windows/install.ps1
       - name: ensure one desired-state authority
         run: test ! -e appliance.toml
       - name: reject duplicate service trees

@@ -12,7 +12,7 @@
     {
       "name": "desktop-daemon",
       "repo": "beamscale/beamscale-desktop-daemon",
-      "rev": "af3fc197926b33209b6dfcd010bfe3dc7c4c47cc",
+      "rev": "aac20b6c41b4dbe0fe5951b8b4daf77e444bf283",
       "kind": "rust",
       "promoted": false
     },

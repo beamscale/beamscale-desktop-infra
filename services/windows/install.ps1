@@ -17,12 +17,16 @@ $runtimeLiteral = Quote-PowerShellLiteral $Runtime
 $exeLiteral = Quote-PowerShellLiteral $Exe
 $command = @(
   '$ErrorActionPreference = "Stop"',
-  ("$env:BMSCL_DESKTOP_HOME = " + $runtimeLiteral),
+  ('$env:BMSCL_DESKTOP_HOME = ' + $runtimeLiteral),
   '$env:BMSCL_DAEMON_LISTEN = "127.0.0.1:9587"',
-  ("& " + $exeLiteral)
+  ('& ' + $exeLiteral)
 ) -join "; "
 
-$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument ("-NoProfile -NonInteractive -WindowStyle Hidden -Command \"" + $command + "\"")
+# ScheduledTaskAction receives one argv string. Encode the child PowerShell
+# program as UTF-16LE/Base64 so paths containing spaces or quotes cannot alter
+# the command line and so we do not depend on cmd.exe-style backslash quoting.
+$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument ("-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand " + $encoded)
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $Settings = New-ScheduledTaskSettingsSet -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
 

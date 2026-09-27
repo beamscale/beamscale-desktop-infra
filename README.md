@@ -7,7 +7,7 @@ This repo is intentionally separate from `beamscale/bmscl-infra`, which remains 
 ## Topology
 
 ```text
-Cloudflare edge -> cloudflared -> 127.0.0.1:8081 -> one BEAM OS process / VM
+Cloudflare edge -> cloudflared -> 127.0.0.1:8080 -> one BEAM OS process / VM
                                                 -> P1 granddaddy supervisor
                                                 -> P2 replaceable runtime
                                                    -> router / deployment manager / budgets / invocation supervisor
@@ -22,4 +22,4 @@ Cloudflare edge -> cloudflared -> 127.0.0.1:8081 -> one BEAM OS process / VM
 ./scripts/bootstrap.sh
 ```
 
-The checked-in appliance manifest pins exact source revisions. Candidate revisions are explicit; promotion requires green upstream CI.
+The checked-in appliance manifest is the single desired-state authority. It pins exact source revisions; bootstrap materializes those exact SHAs and candidate revisions remain unpromoted until their upstream CI gates are green.

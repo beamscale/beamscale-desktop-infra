@@ -1,8 +1,0 @@
-# Copy to your local cloudflared config and replace placeholders.
-tunnel: YOUR_TUNNEL_UUID
-credentials-file: /absolute/path/to/YOUR_TUNNEL_UUID.json
-
-ingress:
-  - hostname: beamscale-dev.example.com
-    service: http://127.0.0.1:8081
-  - service: http_status:404

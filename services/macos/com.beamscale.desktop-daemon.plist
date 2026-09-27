@@ -3,9 +3,14 @@
 <plist version="1.0"><dict>
   <key>Label</key><string>com.beamscale.desktop-daemon</string>
   <key>ProgramArguments</key><array><string>__BINARY__</string></array>
-  <key>EnvironmentVariables</key><dict><key>BMSCL_DAEMON_LISTEN</key><string>127.0.0.1:9587</string></dict>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>BMSCL_DAEMON_LISTEN</key><string>127.0.0.1:9587</string>
+    <key>BMSCL_DESKTOP_HOME</key><string>__RUNTIME_DIR__</string>
+  </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ProcessType</key><string>Interactive</string>
   <key>StandardOutPath</key><string>__LOG_DIR__/daemon.log</string>
   <key>StandardErrorPath</key><string>__LOG_DIR__/daemon.err.log</string>
 </dict></plist>

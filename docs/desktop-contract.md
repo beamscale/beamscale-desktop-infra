@@ -109,8 +109,8 @@ All four clients must converge on the same machine state:
 
 - `bmscl-cli`
 - `bmscl-cli-gleam`
-- `beamscale-flutter`
-- `beamscale-desktop-app.rs`
+- `bmscl-flutter`
+- `bmscl-desktop-app.rs`
 
 No client invents its own status model. UI toggles issue daemon operations and then render daemon-observed state. The same status includes `host_kind`, advertised host capabilities, and manifest-backed infra component state so a CLI action is visible immediately in both desktop UIs.
 

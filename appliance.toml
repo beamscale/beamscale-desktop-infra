@@ -1,0 +1,41 @@
+version = 1
+product = "beamscale"
+profile = "single-host-desktop-v1"
+ingress_url = "http://127.0.0.1:8081"
+daemon_url = "http://127.0.0.1:9587"
+default_proxy = "cloudflared"
+reverse_proxy_required = false
+
+[[component]]
+name = "desktop-daemon"
+repo = "https://github.com/beamscale/beamscale-desktop-daemon.git"
+rev = "3a42807da31b772016968776c0ff68a9b15f6da4"
+status = "candidate"
+build = "cargo build --release"
+
+[[component]]
+name = "supervisor"
+repo = "https://github.com/beamscale/bmscl-supervisor.git"
+rev = "17956df9b0bbde7d0bb8832a842f8e2cf0ebc504"
+status = "promoted"
+build = "rebar3 compile"
+
+[[component]]
+name = "compiler"
+repo = "https://github.com/beamscale/bmscl-compiler.git"
+rev = "b539cc31d814d78a0c34604762c5060c9ad27e34"
+status = "promoted"
+build = "cargo build --release"
+
+[[component]]
+name = "cli"
+repo = "https://github.com/beamscale/bmscl-cli.git"
+rev = "eb8405939ecd54f3ccf27c18da0c6ef04807030d"
+status = "candidate"
+build = "cargo build --release"
+
+[security]
+daemon_bind = "loopback-only"
+daemon_auth = "bearer-token-local-file"
+cloudflare_credentials = "external-local-store"
+plaintext_secrets_in_repo = false

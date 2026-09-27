@@ -112,7 +112,9 @@ All four clients must converge on the same machine state:
 - `beamscale-flutter`
 - `beamscale-desktop-app.rs`
 
-No client invents its own status model. UI toggles issue daemon operations and then render daemon-observed state.
+No client invents its own status model. UI toggles issue daemon operations and then render daemon-observed state. The same status includes `host_kind`, advertised host capabilities, and manifest-backed infra component state so a CLI action is visible immediately in both desktop UIs.
+
+The shared contract intentionally includes `host_kind=mobile` and mobile-safe capability advertisement. A mobile host is **not** implemented by exposing the desktop daemon on a LAN with a bearer token. Android/iOS hosting agents must implement the same typed task/capability semantics behind an authenticated device transport suitable for mobile background execution. This keeps the desktop daemon loopback-only while allowing the Flutter app to grow into a constrained hosting agent.
 
 CLI examples targeted by the contract:
 
@@ -124,6 +126,8 @@ bmscl desktop suspend
 bmscl desktop resume
 bmscl desktop tunnel status
 bmscl desktop tunnel up
+bmscl desktop infra list
+bmscl desktop infra restart beam-runtime
 bmscl desktop keep-alive on
 bmscl desktop upgrade --check
 ```

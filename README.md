@@ -12,8 +12,8 @@ This repository is intentionally separate from `beamscale/bmscl-infra`, which re
 | `beamscale/beamscale-desktop-daemon` | machine-local lifecycle authority; reconciles desired state and owns child processes, updates, suspend/resume, power inhibition, tunnel lifecycle, and local IPC |
 | `beamscale/bmscl-cli` | Rust CLI client for daemon-backed local lifecycle operations |
 | `beamscale/bmscl-cli-gleam` | Gleam/OTP CLI client with the same daemon protocol |
-| `beamscale/beamscale-flutter` | desktop UI client for daemon status/actions/settings |
-| `beamscale/beamscale-desktop-app.rs` | native Rust desktop UI client for daemon status/actions/settings |
+| `beamscale/bmscl-flutter` | desktop UI client for daemon status/actions/settings |
+| `beamscale/bmscl-desktop-app.rs` | native Rust desktop UI client for daemon status/actions/settings |
 | `beamscale/bmscl-infra` | hosted/server infrastructure; not authoritative for an end-user desktop |
 
 The daemon is the **single writer** for desktop runtime state. CLIs and desktop apps must not independently spawn or kill the BeamScale runtime or `cloudflared` when the daemon is available.

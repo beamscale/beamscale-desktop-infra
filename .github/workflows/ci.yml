@@ -15,6 +15,9 @@ jobs:
           python-version: '3.12'
       - run: python scripts/validate_manifest.py
       - run: bash -n scripts/doctor.sh scripts/bootstrap.sh scripts/up.sh scripts/down.sh scripts/status.sh
+      - name: Parse PowerShell bootstrap
+        shell: pwsh
+        run: '[scriptblock]::Create((Get-Content -Raw scripts/bootstrap.ps1)) | Out-Null'
       - name: ensure one desired-state authority
         run: test ! -e appliance.toml
       - name: reject duplicate service trees

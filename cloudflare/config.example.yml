@@ -1,0 +1,8 @@
+# Copy outside the repository and fill in local credentials/tunnel identity.
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: /absolute/path/to/cloudflared/REPLACE_WITH_TUNNEL_UUID.json
+
+ingress:
+  - hostname: dev.example.com
+    service: http://127.0.0.1:8081
+  - service: http_status:404

@@ -1,0 +1,19 @@
+{
+  "schema": "ores.desktop-appliance/v1",
+  "product": "beamscale",
+  "channel": "candidate",
+  "host": {
+    "trust_model": "developer-owned-trusted-host",
+    "daemon_listen": "127.0.0.1:9587",
+    "public_origin": "http://127.0.0.1:8081",
+    "default_reverse_proxy": "none"
+  },
+  "components": [
+    {"name":"desktop-daemon","repo":"beamscale/beamscale-desktop-daemon","rev":"3a42807da31b772016968776c0ff68a9b15f6da4","kind":"rust","promoted":false},
+    {"name":"supervisor","repo":"beamscale/bmscl-supervisor","rev":"17956df9b0bbde7d0bb8832a842f8e2cf0ebc504","kind":"erlang","promoted":true},
+    {"name":"compiler","repo":"beamscale/bmscl-compiler","rev":"b539cc31d814d78a0c34604762c5060c9ad27e34","kind":"rust","promoted":true},
+    {"name":"cli","repo":"beamscale/bmscl-cli","rev":"eb8405939ecd54f3ccf27c18da0c6ef04807030d","kind":"rust","promoted":false}
+  ],
+  "cloudflare": {"origin":"http://127.0.0.1:8081","credentials_in_repo":false},
+  "update": {"mode":"exact-revision","allow_mutable_latest":false,"rollback":"previous-manifest"}
+}

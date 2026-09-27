@@ -12,7 +12,7 @@
     {
       "name": "desktop-daemon",
       "repo": "beamscale/beamscale-desktop-daemon",
-      "rev": "01eb5a91c7beca1dd7441c609c1f8970e0ad66e2",
+      "rev": "af3fc197926b33209b6dfcd010bfe3dc7c4c47cc",
       "kind": "rust",
       "promoted": false
     },
@@ -33,7 +33,7 @@
     {
       "name": "cli",
       "repo": "beamscale/bmscl-cli",
-      "rev": "887d109f2e2b875572eb272ff92efa6297b8b28a",
+      "rev": "4b959e8e7c039da8d9a3251b02cb638e2c6848b1",
       "kind": "rust",
       "promoted": false,
       "role": "end-user-cli"
@@ -43,7 +43,7 @@
     {
       "name": "cli-gleam",
       "repo": "beamscale/bmscl-cli-gleam",
-      "rev": "cf440dcf0a58262398811e0a12bfabfe02e7fd89",
+      "rev": "0227f62605f51244f857abc021ac49b53fca4d65",
       "promoted": false,
       "role": "internal-operator-cli"
     },

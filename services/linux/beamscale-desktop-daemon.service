@@ -1,18 +1,20 @@
 [Unit]
 Description=BeamScale Desktop Daemon
 After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 Environment=BMSCL_DAEMON_LISTEN=127.0.0.1:9587
-ExecStart=%h/.local/share/beamscale-desktop/bin/beamscale-desktop-daemon
+Environment=BMSCL_DESKTOP_HOME=__RUNTIME_DIR__
+ExecStart=__BINARY__
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=%h/.beamscale %h/.local/share/beamscale-desktop
+ReadWritePaths=__STATE_DIR__
 
 [Install]
 WantedBy=default.target

@@ -5,15 +5,24 @@
   "host": {
     "trust_model": "developer-owned-trusted-host",
     "daemon_listen": "127.0.0.1:9587",
-    "public_origin": "http://127.0.0.1:8081",
+    "public_origin": "http://127.0.0.1:8080",
     "default_reverse_proxy": "none"
   },
   "components": [
-    {"name":"desktop-daemon","repo":"beamscale/beamscale-desktop-daemon","rev":"3a42807da31b772016968776c0ff68a9b15f6da4","kind":"rust","promoted":false},
-    {"name":"supervisor","repo":"beamscale/bmscl-supervisor","rev":"17956df9b0bbde7d0bb8832a842f8e2cf0ebc504","kind":"erlang","promoted":true},
+    {"name":"desktop-daemon","repo":"beamscale/beamscale-desktop-daemon","rev":"01eb5a91c7beca1dd7441c609c1f8970e0ad66e2","kind":"rust","promoted":false},
+    {"name":"supervisor","repo":"beamscale/bmscl-supervisor","rev":"bd92f030e844d4f8a723885b5250da65a7043a2a","kind":"erlang","promoted":false},
     {"name":"compiler","repo":"beamscale/bmscl-compiler","rev":"b539cc31d814d78a0c34604762c5060c9ad27e34","kind":"rust","promoted":true},
-    {"name":"cli","repo":"beamscale/bmscl-cli","rev":"eb8405939ecd54f3ccf27c18da0c6ef04807030d","kind":"rust","promoted":false}
+    {"name":"cli","repo":"beamscale/bmscl-cli","rev":"887d109f2e2b875572eb272ff92efa6297b8b28a","kind":"rust","promoted":false}
   ],
-  "cloudflare": {"origin":"http://127.0.0.1:8081","credentials_in_repo":false},
-  "update": {"mode":"exact-revision","allow_mutable_latest":false,"rollback":"previous-manifest"}
+  "clients": [
+    {"name":"cli-gleam","repo":"beamscale/bmscl-cli-gleam","rev":"cf440dcf0a58262398811e0a12bfabfe02e7fd89","promoted":false},
+    {"name":"flutter","repo":"beamscale/bmscl-flutter","rev":"eb16b1862ad2026e04d62fcdc469f6acfc196ed2","promoted":false},
+    {"name":"desktop-rust","repo":"beamscale/bmscl-desktop-app.rs","rev":"778cb7e04ccb6c31f4e6048cb83e6d10f6707fe5","promoted":false}
+  ],
+  "cloudflare": {"origin":"http://127.0.0.1:8080","credentials_in_repo":false},
+  "update": {"mode":"exact-revision","allow_mutable_latest":false,"rollback":"previous-manifest"},
+  "promotion_gates": {
+    "private_repo_ci_evidence": false,
+    "desktop_ingress_ci_green": false
+  }
 }

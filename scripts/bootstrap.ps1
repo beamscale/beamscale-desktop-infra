@@ -72,15 +72,20 @@ $InternalWrapper = Join-Path $Bin "bmscl-internal.cmd"
 escript "%~dp0bmscl-internal.escript" %*
 "@ | Set-Content -NoNewline -Encoding ascii $InternalWrapper
 
+function Quote-PowerShellLiteral([string]$Value) {
+  return "'" + $Value.Replace("'", "''") + "'"
+}
+
 $EnvFile = Join-Path $State "env.ps1"
-@"
-$env:BMSCL_DESKTOP_HOME = "$(Join-Path $State "runtime")"
-$env:BMSCL_DAEMON_URL = "http://127.0.0.1:9587"
-$env:BMSCL_COMPILER = "$(Join-Path $Bin "bmscl-compiler.exe")"
-$env:BMSCL_SUPERVISOR_ROOT = "$(Join-Path $Src "supervisor")"
-$env:BMSCL_INTERNAL_CLI = "$InternalWrapper"
-$env:PATH = "$Bin;" + $env:PATH
-"@ | Set-Content -Encoding utf8 $EnvFile
+$EnvLines = @(
+  ('$env:BMSCL_DESKTOP_HOME = ' + (Quote-PowerShellLiteral (Join-Path $State "runtime"))),
+  ('$env:BMSCL_DAEMON_URL = ' + (Quote-PowerShellLiteral "http://127.0.0.1:9587")),
+  ('$env:BMSCL_COMPILER = ' + (Quote-PowerShellLiteral (Join-Path $Bin "bmscl-compiler.exe"))),
+  ('$env:BMSCL_SUPERVISOR_ROOT = ' + (Quote-PowerShellLiteral (Join-Path $Src "supervisor"))),
+  ('$env:BMSCL_INTERNAL_CLI = ' + (Quote-PowerShellLiteral $InternalWrapper)),
+  ('$env:PATH = ' + (Quote-PowerShellLiteral ($Bin + ';')) + ' + $env:PATH')
+)
+$EnvLines | Set-Content -Encoding utf8 $EnvFile
 
 Write-Host "BeamScale desktop appliance bootstrapped at $State"
 Write-Host "  external CLI: $(Join-Path $Bin "bmscl.exe")"

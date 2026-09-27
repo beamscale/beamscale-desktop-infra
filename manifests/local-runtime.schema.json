@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/beamscale/beamscale-desktop-infra/manifests/local-runtime.schema.json",
+  "title": "BeamScale desktop local runtime manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_version", "runtime_kind", "release", "listen", "health", "lifecycle", "keep_awake"],
+  "properties": {
+    "manifest_version": {"const": 1},
+    "runtime_kind": {"const": "beamscale-single-beam"},
+    "example_only": {"type": "boolean", "default": false},
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "version", "sha256", "argv"],
+      "properties": {
+        "component": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "argv": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "listen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "port"],
+      "properties": {
+        "host": {"enum": ["127.0.0.1", "::1"]},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535}
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["readiness_path", "startup_timeout_ms"],
+      "properties": {
+        "readiness_path": {"type": "string", "pattern": "^/"},
+        "startup_timeout_ms": {"type": "integer", "minimum": 1000, "maximum": 300000}
+      }
+    },
+    "tunnel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "name": {"type": "string"},
+        "hostname": {"type": "string"},
+        "config_path": {"type": "string"}
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startup_grace_ms", "shutdown_grace_ms", "drain_grace_ms"],
+      "properties": {
+        "startup_grace_ms": {"type": "integer", "minimum": 0},
+        "shutdown_grace_ms": {"type": "integer", "minimum": 0},
+        "drain_grace_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "keep_awake": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {"enabled": {"type": "boolean"}}
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "manifest_version": 1,
+  "runtime_kind": "beamscale-single-beam",
+  "example_only": true,
+  "release": {
+    "component": "bmscl-supervisor",
+    "version": "REPLACE_WITH_PINNED_VERSION",
+    "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "argv": ["bmscl-supervisor", "foreground"]
+  },
+  "listen": {"host": "127.0.0.1", "port": 8080},
+  "health": {"readiness_path": "/readyz", "startup_timeout_ms": 30000},
+  "tunnel": {"enabled": false, "name": "", "hostname": "", "config_path": ""},
+  "lifecycle": {"startup_grace_ms": 30000, "shutdown_grace_ms": 15000, "drain_grace_ms": 30000},
+  "keep_awake": {"enabled": false}
+}

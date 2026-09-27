@@ -1,0 +1,18 @@
+schema_version = "beamscale.desktop.infra.v1"
+manifest = "manifests/local-runtime.example.json"
+components_lock = "components.lock.json"
+
+[state]
+root = "${XDG_STATE_HOME:-~/.local/state}/beamscale"
+
+[ipc]
+transport = "auto"
+loopback_fallback = false
+
+[security]
+allow_non_loopback_origin = false
+allow_cloudflared_token_argv = false
+
+[updates]
+require_digest = true
+rollback_on_failed_readiness = true

@@ -1,0 +1,8 @@
+# Copy outside the repository before use. Never commit credentials.
+tunnel: REPLACE_WITH_NAMED_TUNNEL_ID
+credentials-file: /absolute/path/outside/repository/REPLACE.json
+
+ingress:
+  - hostname: beamscale.example.com
+    service: http://127.0.0.1:8080
+  - service: http_status:404

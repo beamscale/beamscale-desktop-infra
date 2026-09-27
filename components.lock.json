@@ -1,0 +1,6 @@
+{
+  "lock_version": 1,
+  "resolved": false,
+  "components": [],
+  "note": "Fail-closed bootstrap lock. Release automation must resolve immutable component versions and SHA-256 digests before installation."
+}

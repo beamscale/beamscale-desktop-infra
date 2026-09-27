@@ -6,11 +6,59 @@
     "component": "bmscl-supervisor",
     "version": "REPLACE_WITH_PINNED_VERSION",
     "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "argv": ["bmscl-supervisor", "foreground"]
+    "argv": [
+      "bmscl-supervisor",
+      "foreground"
+    ]
   },
-  "listen": {"host": "127.0.0.1", "port": 8080},
-  "health": {"readiness_path": "/readyz", "startup_timeout_ms": 30000},
-  "tunnel": {"enabled": false, "name": "", "hostname": "", "config_path": ""},
-  "lifecycle": {"startup_grace_ms": 30000, "shutdown_grace_ms": 15000, "drain_grace_ms": 30000},
-  "keep_awake": {"enabled": false}
+  "listen": {
+    "host": "127.0.0.1",
+    "port": 8080
+  },
+  "health": {
+    "readiness_path": "/readyz",
+    "startup_timeout_ms": 30000
+  },
+  "tunnel": {
+    "enabled": false,
+    "name": "",
+    "hostname": "",
+    "config_path": ""
+  },
+  "lifecycle": {
+    "startup_grace_ms": 30000,
+    "shutdown_grace_ms": 15000,
+    "drain_grace_ms": 30000
+  },
+  "keep_awake": {
+    "enabled": false
+  },
+  "host": {
+    "kind": "desktop",
+    "capabilities": [
+      "runtime_host",
+      "infra_process_supervision",
+      "cloudflare_tunnel",
+      "keep_awake",
+      "background_execution",
+      "container_workers",
+      "native_workers"
+    ]
+  },
+  "managed_components": [
+    {
+      "id": "beam-runtime",
+      "kind": "runtime",
+      "autostart": true,
+      "depends_on": []
+    },
+    {
+      "id": "cloudflare-tunnel",
+      "kind": "tunnel",
+      "autostart": false,
+      "depends_on": [
+        "beam-runtime"
+      ]
+    }
+  ]
 }

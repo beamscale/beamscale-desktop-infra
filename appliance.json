@@ -9,14 +9,14 @@
     "default_reverse_proxy": "none"
   },
   "components": [
-    {"name":"desktop-daemon","repo":"beamscale/beamscale-desktop-daemon","rev":"d2e1b10df5939f16acbcaa2acbf27723164f27eb","kind":"rust","promoted":false},
+    {"name":"desktop-daemon","repo":"beamscale/beamscale-desktop-daemon","rev":"01eb5a91c7beca1dd7441c609c1f8970e0ad66e2","kind":"rust","promoted":false},
     {"name":"supervisor","repo":"beamscale/bmscl-supervisor","rev":"bd92f030e844d4f8a723885b5250da65a7043a2a","kind":"erlang","promoted":false},
     {"name":"compiler","repo":"beamscale/bmscl-compiler","rev":"b539cc31d814d78a0c34604762c5060c9ad27e34","kind":"rust","promoted":true},
-    {"name":"cli","repo":"beamscale/bmscl-cli","rev":"969d1399db8ff363773602028319fa65c50efb6b","kind":"rust","promoted":false}
+    {"name":"cli","repo":"beamscale/bmscl-cli","rev":"887d109f2e2b875572eb272ff92efa6297b8b28a","kind":"rust","promoted":false}
   ],
   "clients": [
     {"name":"cli-gleam","repo":"beamscale/bmscl-cli-gleam","rev":"cf440dcf0a58262398811e0a12bfabfe02e7fd89","promoted":false},
-    {"name":"flutter","repo":"beamscale/bmscl-flutter","rev":"a5a368fc8dd78c52fc37b1a8c276ac71d8b6fed5","promoted":false},
+    {"name":"flutter","repo":"beamscale/bmscl-flutter","rev":"eb16b1862ad2026e04d62fcdc469f6acfc196ed2","promoted":false},
     {"name":"desktop-rust","repo":"beamscale/bmscl-desktop-app.rs","rev":"778cb7e04ccb6c31f4e6048cb83e6d10f6707fe5","promoted":false}
   ],
   "cloudflare": {"origin":"http://127.0.0.1:8080","credentials_in_repo":false},

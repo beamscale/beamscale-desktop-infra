@@ -15,6 +15,15 @@ Cloudflare edge -> cloudflared -> http://127.0.0.1:8080 -> one BEAM OS process /
 
 `beamscale-desktop-daemon` is the machine lifecycle authority. CLI and desktop UIs are clients of its authenticated loopback API. There is no nginx/Caddy/HAProxy in the default path.
 
+## CLI roles
+
+The desktop appliance intentionally installs two different CLI surfaces:
+
+- `bmscl` — Rust, external/end-user CLI for development, build, verification, deployment, and a small user-friendly local-hosting workflow.
+- `bmscl-internal` — Gleam/OTP, internal/operator CLI for raw runtime/tunnel/update controls plus agent and infrastructure operations.
+
+Automation in this repository must use `bmscl-internal` for daemon lifecycle operations. The end-user CLI must not become the transport for agent leasing, arbitrary infra dispatch, update-root changes, or custom daemon internals. The daemon reinforces the distinction with separate user and operator tokens.
+
 ## Quick start
 
 ```sh
@@ -23,3 +32,27 @@ Cloudflare edge -> cloudflared -> http://127.0.0.1:8080 -> one BEAM OS process /
 ```
 
 The checked-in appliance manifest is the single desired-state authority. It pins exact source revisions; bootstrap materializes those exact SHAs and candidate revisions remain unpromoted until their upstream CI gates are green.
+
+## Lifecycle
+
+Unix/macOS:
+
+```sh
+./scripts/doctor.sh
+./scripts/bootstrap.sh
+./scripts/up.sh ./my-project
+./scripts/status.sh
+./scripts/install-service.sh   # optional: restore daemon at login
+```
+
+Windows PowerShell:
+
+```powershell
+.\scripts\doctor.ps1
+.\scripts\bootstrap.ps1
+.\scripts\up.ps1 -Project .\my-project
+.\scripts\status.ps1
+.\services\windows\install.ps1
+```
+
+The service installers point at the same appliance state directory used by bootstrap, including the daemon's `token`, `operator-token`, settings, and desired-state files. Uninstalling the service does not delete appliance state.

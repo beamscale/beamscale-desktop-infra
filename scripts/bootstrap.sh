@@ -1,34 +1,82 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE="${BMSCL_DESKTOP_STATE:-$ROOT/.desktop}"
-SRC="$STATE/src"; BIN="$STATE/bin"
+SRC="$STATE/src"
+BIN="$STATE/bin"
+
 mkdir -p "$SRC" "$BIN" "$STATE/logs" "$STATE/runtime"
 python3 "$ROOT/scripts/validate_manifest.py"
-for tool in git python3 cargo erl rebar3; do command -v "$tool" >/dev/null || { echo "missing required tool: $tool" >&2; exit 1; }; done
+
+for tool in git python3 cargo erl rebar3 gleam escript; do
+  command -v "$tool" >/dev/null 2>&1 || {
+    echo "missing required tool: $tool" >&2
+    exit 1
+  }
+done
+
 python3 - "$ROOT/appliance.json" "$SRC" <<'PY'
-import json,pathlib,subprocess,sys
-m=json.loads(pathlib.Path(sys.argv[1]).read_text()); root=pathlib.Path(sys.argv[2])
-for c in m['components']:
- d=root/c['name']; repo='https://github.com/'+c['repo']+'.git'; rev=c['rev']
- if not (d/'.git').exists(): subprocess.run(['git','clone','--filter=blob:none',repo,str(d)],check=True)
- subprocess.run(['git','-C',str(d),'fetch','--quiet','origin',rev],check=True)
- subprocess.run(['git','-C',str(d),'checkout','--quiet','--detach',rev],check=True)
- assert subprocess.check_output(['git','-C',str(d),'rev-parse','HEAD'],text=True).strip()==rev
+import json
+import pathlib
+import subprocess
+import sys
+
+manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
+root = pathlib.Path(sys.argv[2])
+
+wanted = list(manifest["components"])
+wanted.extend(
+    client for client in manifest.get("clients", [])
+    if client.get("role") == "internal-operator-cli"
+)
+
+for component in wanted:
+    dest = root / component["name"]
+    repo = "https://github.com/" + component["repo"] + ".git"
+    rev = component["rev"]
+    if not (dest / ".git").exists():
+        subprocess.run(
+            ["git", "clone", "--filter=blob:none", repo, str(dest)],
+            check=True,
+        )
+    subprocess.run(["git", "-C", str(dest), "fetch", "--quiet", "origin", rev], check=True)
+    subprocess.run(["git", "-C", str(dest), "checkout", "--quiet", "--detach", rev], check=True)
+    head = subprocess.check_output(
+        ["git", "-C", str(dest), "rev-parse", "HEAD"],
+        text=True,
+    ).strip()
+    if head != rev:
+        raise SystemExit(f"{component['repo']} resolved to {head}, expected {rev}")
 PY
+
 cargo build --release --manifest-path "$SRC/desktop-daemon/Cargo.toml"
 cargo build --release --manifest-path "$SRC/compiler/Cargo.toml"
 cargo build --release --manifest-path "$SRC/cli/Cargo.toml"
 ( cd "$SRC/supervisor" && rebar3 compile )
+( cd "$SRC/cli-gleam" && gleam export escript )
+
 cp "$SRC/desktop-daemon/target/release/beamscale-desktop-daemon" "$BIN/"
 cp "$SRC/compiler/target/release/bmscl-compiler" "$BIN/"
 cp "$SRC/cli/target/release/bmscl" "$BIN/"
-chmod 0755 "$BIN/"*
+cp "$SRC/cli-gleam/bmscl_cli" "$BIN/bmscl-internal.escript"
+
+cat > "$BIN/bmscl-internal" <<EOF
+#!/usr/bin/env sh
+exec escript "$BIN/bmscl-internal.escript" "\$@"
+EOF
+
+chmod 0755   "$BIN/beamscale-desktop-daemon"   "$BIN/bmscl-compiler"   "$BIN/bmscl"   "$BIN/bmscl-internal"   "$BIN/bmscl-internal.escript"
+
 cat > "$STATE/env" <<EOF
 export BMSCL_DESKTOP_HOME="$STATE/runtime"
 export BMSCL_DAEMON_URL="http://127.0.0.1:9587"
 export BMSCL_COMPILER="$BIN/bmscl-compiler"
 export BMSCL_SUPERVISOR_ROOT="$SRC/supervisor"
+export BMSCL_INTERNAL_CLI="$BIN/bmscl-internal"
 export PATH="$BIN:\$PATH"
 EOF
+
 echo "BeamScale desktop appliance bootstrapped at $STATE"
+echo "  external CLI: $BIN/bmscl"
+echo "  internal CLI: $BIN/bmscl-internal"

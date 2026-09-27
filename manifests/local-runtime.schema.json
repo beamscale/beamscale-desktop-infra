@@ -4,66 +4,249 @@
   "title": "BeamScale desktop local runtime manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["manifest_version", "runtime_kind", "release", "listen", "health", "lifecycle", "keep_awake"],
+  "required": [
+    "manifest_version",
+    "runtime_kind",
+    "release",
+    "listen",
+    "health",
+    "lifecycle",
+    "keep_awake",
+    "host",
+    "managed_components"
+  ],
   "properties": {
-    "manifest_version": {"const": 1},
-    "runtime_kind": {"const": "beamscale-single-beam"},
-    "example_only": {"type": "boolean", "default": false},
+    "manifest_version": {
+      "const": 1
+    },
+    "runtime_kind": {
+      "const": "beamscale-single-beam"
+    },
+    "example_only": {
+      "type": "boolean",
+      "default": false
+    },
     "release": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["component", "version", "sha256", "argv"],
+      "required": [
+        "component",
+        "version",
+        "sha256",
+        "argv"
+      ],
       "properties": {
-        "component": {"type": "string", "minLength": 1},
-        "version": {"type": "string", "minLength": 1},
-        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-        "argv": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+        "component": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       }
     },
     "listen": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["host", "port"],
+      "required": [
+        "host",
+        "port"
+      ],
       "properties": {
-        "host": {"enum": ["127.0.0.1", "::1"]},
-        "port": {"type": "integer", "minimum": 1, "maximum": 65535}
+        "host": {
+          "enum": [
+            "127.0.0.1",
+            "::1"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
       }
     },
     "health": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["readiness_path", "startup_timeout_ms"],
+      "required": [
+        "readiness_path",
+        "startup_timeout_ms"
+      ],
       "properties": {
-        "readiness_path": {"type": "string", "pattern": "^/"},
-        "startup_timeout_ms": {"type": "integer", "minimum": 1000, "maximum": 300000}
+        "readiness_path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "startup_timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 300000
+        }
       }
     },
     "tunnel": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled"],
+      "required": [
+        "enabled"
+      ],
       "properties": {
-        "enabled": {"type": "boolean"},
-        "name": {"type": "string"},
-        "hostname": {"type": "string"},
-        "config_path": {"type": "string"}
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "config_path": {
+          "type": "string"
+        }
       }
     },
     "lifecycle": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["startup_grace_ms", "shutdown_grace_ms", "drain_grace_ms"],
+      "required": [
+        "startup_grace_ms",
+        "shutdown_grace_ms",
+        "drain_grace_ms"
+      ],
       "properties": {
-        "startup_grace_ms": {"type": "integer", "minimum": 0},
-        "shutdown_grace_ms": {"type": "integer", "minimum": 0},
-        "drain_grace_ms": {"type": "integer", "minimum": 0}
+        "startup_grace_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shutdown_grace_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "drain_grace_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "keep_awake": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled"],
-      "properties": {"enabled": {"type": "boolean"}}
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "capabilities"
+      ],
+      "properties": {
+        "kind": {
+          "const": "desktop"
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "runtime_host",
+              "infra_process_supervision",
+              "cloudflare_tunnel",
+              "keep_awake",
+              "background_execution",
+              "container_workers",
+              "native_workers"
+            ]
+          }
+        }
+      }
+    },
+    "managed_components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "autostart",
+          "depends_on"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "kind": {
+            "enum": [
+              "runtime",
+              "tunnel",
+              "support"
+            ]
+          },
+          "autostart": {
+            "type": "boolean"
+          },
+          "depends_on": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+            }
+          },
+          "argv": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "support"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "argv"
+              ]
+            }
+          }
+        ]
+      }
     }
   }
 }

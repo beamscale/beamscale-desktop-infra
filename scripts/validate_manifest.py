@@ -1,39 +1,23 @@
 #!/usr/bin/env python3
-import json, re, sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-manifest = json.loads((ROOT / "appliance.json").read_text())
-errors = []
-
-if manifest.get("schema") != "ores.desktop-appliance/v1":
-    errors.append("unexpected schema")
-host = manifest.get("host", {})
-listen = host.get("daemon_listen", "")
-if not (listen.startswith("127.0.0.1:") or listen.startswith("[::1]:")):
-    errors.append("daemon must bind to loopback")
-if host.get("default_reverse_proxy") != "none":
-    errors.append("default reverse proxy must remain none")
-if manifest.get("cloudflare", {}).get("credentials_in_repo") is not False:
-    errors.append("Cloudflare credentials must never be committed")
-if manifest.get("update", {}).get("allow_mutable_latest") is not False:
-    errors.append("mutable latest updates are forbidden")
-
-seen = set()
-for component in manifest.get("components", []):
-    name = component.get("name")
-    rev = component.get("rev", "")
-    repo = component.get("repo", "")
-    if not name or name in seen:
-        errors.append(f"duplicate or empty component name: {name!r}")
+import pathlib,re,sys,tomllib
+root=pathlib.Path(__file__).resolve().parents[1]
+data=tomllib.loads((root/'appliance.toml').read_text())
+errors=[]
+if data.get('version')!=1: errors.append('version must be 1')
+if data.get('profile')!='single-host-desktop-v1': errors.append('unexpected profile')
+if data.get('reverse_proxy_required') is not False: errors.append('default path must not require another reverse proxy')
+for key in ('ingress_url','daemon_url'):
+    if not str(data.get(key,'')).startswith('http://127.0.0.1:'): errors.append(key+' must be loopback')
+seen=set()
+for c in data.get('component',[]):
+    name=c.get('name'); rev=c.get('rev','')
+    if not name or name in seen: errors.append('duplicate/missing component name')
     seen.add(name)
-    if not re.fullmatch(r"[0-9a-f]{40}", rev):
-        errors.append(f"{name}: rev must be a full 40-char lowercase commit SHA")
-    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
-        errors.append(f"{name}: invalid GitHub repo slug")
-
+    if not re.fullmatch(r'[0-9a-f]{40}',rev): errors.append(str(name)+': rev must be exact SHA')
+    if c.get('status') not in {'candidate','promoted'}: errors.append(str(name)+': invalid status')
+    if not str(c.get('repo','')).startswith('https://github.com/beamscale/'): errors.append(str(name)+': wrong org')
+missing={'desktop-daemon','supervisor','compiler','cli'}-seen
+if missing: errors.append('missing: '+','.join(sorted(missing)))
 if errors:
-    for error in errors:
-        print(f"ERROR: {error}", file=sys.stderr)
-    raise SystemExit(1)
-print("appliance manifest OK")
+    print('\n'.join('ERROR: '+x for x in errors),file=sys.stderr); raise SystemExit(1)
+print('appliance manifest OK')

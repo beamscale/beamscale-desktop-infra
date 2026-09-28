@@ -79,3 +79,11 @@ Generic desktop lifecycle/security behavior is moving to `ORESoftware/ores-commo
 
 The common platform is now pinned at `1de34a491673cff2ff7fedb6ba36f8b6a10ae5a1` in `appliance.json`. Candidate promotion must keep that exact revision aligned with common-layer conformance checks; updates to the shared platform are explicit revision bumps, never a mutable branch dependency.
 
+
+## Hot-reload routing and middleware
+
+This product consumes the shared ORES generation model with **BEAM route ownership + OTP hot-code/release upgrades** as its default. Routing/middleware is a separate lifecycle and memory/failure boundary from standalone servers and lambda/actor workers, so route or middleware updates do not restart unrelated compute.
+
+`hot-reload-policy.json` declares the product policy. The edge may optionally use nginx, HAProxy, or Caddy. nginx uses validated worker-generation reloads; HAProxy prefers Runtime API changes and falls back to master-worker reload for structural changes; Caddy uses its transactional Admin API. Proxy-managed application routes are opt-in and limited to declarative routing/middleware. Arbitrary middleware code stays in BEAM, Wasm, or a separately supervised process generation.
+
+Long-lived WebSockets/streams are bounded by a hard generation drain timeout so repeated reloads cannot accumulate old generations indefinitely.

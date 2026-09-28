@@ -86,7 +86,7 @@
     "desktop_ingress_ci_green": false,
     "public_ingress_ready": false,
     "daemon_lockfile_committed": false,
-    "common_layer_pinned": false
+    "common_layer_pinned": true
   },
   "cli_profiles": {
     "end_user": {
@@ -112,8 +112,8 @@
   "common_layer": {
     "repository": "ORESoftware/ores-common-desktop-infra",
     "checkout_dir": "tmp/dev/ores-common-desktop-infra",
-    "status": "awaiting-repository",
-    "revision": null,
+    "status": "pinned-candidate",
+    "revision": "73ebe4b3caa7478c45f64a2eb983838a91ff9732",
     "capabilities": [
       "consumer-validation",
       "loopback-policy",
@@ -122,7 +122,19 @@
       "update-policy",
       "process-lifecycle",
       "health-readiness",
-      "structured-logging"
-    ]
+      "structured-logging",
+      "runtime-adapter",
+      "router-generations",
+      "middleware-generations",
+      "deployment-bundle",
+      "crash-recovery",
+      "secure-credential-store",
+      "packaging",
+      "conformance",
+      "shared-navigation"
+    ],
+    "distribution": "zed-pkg",
+    "package": "oresoftware/ores-common-desktop-infra",
+    "package_version": "0.1.0"
   }
 }

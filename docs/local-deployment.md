@@ -43,25 +43,19 @@ Upgrades change the immutable daemon source commit only after upstream review/CI
 
 ## Common desktop implementation layer
 
-This appliance is required to consume `ORESoftware/ores-common-desktop-infra` for generic host/security/lifecycle behavior instead of maintaining product-local copies.
+Generic host/security/lifecycle behavior is owned by `ORESoftware/ores-common-desktop-infra`.
 
-The machine-readable ORES appliance currently records:
+The appliance pins the shared implementation at:
 
-- repository: `ORESoftware/ores-common-desktop-infra`;
-- checkout: `tmp/dev/ores-common-desktop-infra`;
-- status: `awaiting-repository`;
-- revision: `null`.
+```text
+repository = ORESoftware/ores-common-desktop-infra
+revision   = c98aee842535429bc07b5e4437a2fb84d8f00d25
+checkout   = tmp/dev/ores-common-desktop-infra
+status     = pinned
+```
 
-That is a fail-closed migration state. Stable promotion is blocked while `promotion_gates.common_layer_pinned` is false.
+`promotion_gates.common_layer_pinned` is true because the exact source identity is recorded. `promotion_gates.common_layer_ci_verified` remains false until the authenticated certification workflow executes the shared Rust consumer checker successfully.
 
-Once the common repository is available, migration must be atomic:
-
-1. pin an exact 40-hex common-layer commit;
-2. change status to `pinned`;
-3. set `common_layer_pinned=true`;
-4. invoke/import the shared validators and lifecycle helpers from that exact checkout;
-5. delete product-local copies of code now owned by the common layer;
-6. keep only product-specific ports, daemon/runtime topology, workers, and native contracts here.
+The certification workflow fails closed when its approved read-only fleet credential is unavailable, verifies the checked-out commit before execution, and does not persist checkout credentials. Stable promotion remains blocked while common-layer CI evidence is false.
 
 Mutable branches or tags are not acceptable release dependencies.
-

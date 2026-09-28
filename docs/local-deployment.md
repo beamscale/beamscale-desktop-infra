@@ -49,8 +49,7 @@ The machine-readable ORES appliance currently records:
 
 - repository: `ORESoftware/ores-common-desktop-infra`;
 - checkout: `tmp/dev/ores-common-desktop-infra`;
-- status: `awaiting-repository`;
-- revision: `null`.
+- status: `pinned`; revision: `7bb4ed89ab4aa4a81c5e26e36b91f58d6313cc7c`.
 
 That is a fail-closed migration state. Stable promotion is blocked while `promotion_gates.common_layer_pinned` is false.
 
@@ -65,3 +64,10 @@ Once the common repository is available, migration must be atomic:
 
 Mutable branches or tags are not acceptable release dependencies.
 
+
+
+### Common layer CI evidence
+
+The shared implementation is pinned at `7bb4ed89ab4aa4a81c5e26e36b91f58d6313cc7c`. Consumer CI checks out that exact private revision and runs `ores-common-desktop-consumer-check`.
+
+`promotion_gates.common_layer_ci_verified` remains false until that exact-head workflow succeeds. Cross-organization Actions access must come from a short-lived read-only GitHub App token or the approved `FLEET_GITHUB_READ_TOKEN` fallback. Missing credentials fail closed; mutable branch fallback is forbidden.

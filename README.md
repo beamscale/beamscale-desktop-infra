@@ -75,9 +75,9 @@ See [docs/local-deployment.md](docs/local-deployment.md) and [appliance.json](ap
 
 ## Shared desktop infra dependency
 
-Generic desktop lifecycle/security behavior is moving to `ORESoftware/ores-common-desktop-infra`. This repo declares that dependency in its ORES appliance metadata and blocks stable promotion until an exact common-layer commit is pinned.
+Generic desktop lifecycle/security behavior is owned by `ORESoftware/ores-common-desktop-infra`. This repo consumes that dependency through an exact immutable revision recorded in its ORES appliance metadata.
 
-The common platform is now pinned at `1de34a491673cff2ff7fedb6ba36f8b6a10ae5a1` in `appliance.json`. Candidate promotion must keep that exact revision aligned with common-layer conformance checks; updates to the shared platform are explicit revision bumps, never a mutable branch dependency.
+The common platform is pinned at `c98aee842535429bc07b5e4437a2fb84d8f00d25` in `appliance.json`. Candidate promotion must keep that exact revision aligned with the shared Rust consumer checker; updates are explicit revision bumps, never mutable branch dependencies. `.github/workflows/common-layer-certification.yml` performs an authenticated exact-SHA checkout and executes that checker without persisting credentials.
 
 
 ## Hot-reload routing and middleware

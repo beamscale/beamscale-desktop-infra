@@ -157,7 +157,7 @@ fn boolean(o:&BTreeMap<String,Value>, key:&str)->Result<bool,String>{
 fn number(o:&BTreeMap<String,Value>, key:&str)->Result<u64,String>{
     match field(o,key)? { Value::Number(v)=>Ok(*v), _=>Err(format!("{key} must be an integer")) }
 }
-fn strings(o:&BTreeMap<String,Value>, key:&str)->Result<Vec<&str>,String>{
+fn strings<'a>(o: &'a BTreeMap<String, Value>, key: &str) -> Result<Vec<&'a str>, String> {
     match field(o,key)? {
         Value::Array(v)=>v.iter().map(|x|match x{
             Value::String(s)=>Ok(s.as_str()),

@@ -19,6 +19,31 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Require private common-layer read credential
+        shell: bash
+        env:
+          COMMON_READ_TOKEN: ${{ secrets.FLEET_GITHUB_READ_TOKEN || secrets.TEST_FLEET_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${COMMON_READ_TOKEN}"
+
+      - name: Check out exact common desktop implementation
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ORESoftware/ores-common-desktop-infra
+          ref: b4d4c2ba02b41ab2e0b4d02d3f7e87f3023c8e90
+          token: ${{ secrets.FLEET_GITHUB_READ_TOKEN || secrets.TEST_FLEET_READ_TOKEN }}
+          path: tmp/dev/ores-common-desktop-infra
+          persist-credentials: false
+
+      - name: Compile and execute shared desktop consumer checker
+        env:
+          ORES_COMMON_DESKTOP_EXPECTED_REVISION: b4d4c2ba02b41ab2e0b4d02d3f7e87f3023c8e90
+        run: |
+          cargo run --locked \
+            --manifest-path tmp/dev/ores-common-desktop-infra/daemon/rust/Cargo.toml \
+            --bin ores-common-desktop-consumer-check
+
       - name: Validate desktop appliance boundary
         shell: bash
         run: |

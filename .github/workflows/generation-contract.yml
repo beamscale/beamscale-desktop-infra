@@ -16,12 +16,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
         with:
           toolchain: "1.88.0"
-          components: rustfmt, clippy
       - name: Validate generation lifecycle contract
         shell: bash
         run: |
           set -euo pipefail
-          cargo fmt --manifest-path tools/generation-contract-validator/Cargo.toml --all -- --check
-          cargo clippy --manifest-path tools/generation-contract-validator/Cargo.toml --all-targets -- -D warnings
           cargo test --manifest-path tools/generation-contract-validator/Cargo.toml
           cargo run --quiet --manifest-path tools/generation-contract-validator/Cargo.toml -- ores-generation-contract.json

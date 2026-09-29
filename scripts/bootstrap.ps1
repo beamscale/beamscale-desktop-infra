@@ -8,7 +8,7 @@ $ManifestPath = Join-Path $RepoRoot "appliance.json"
 
 New-Item -ItemType Directory -Force -Path $Src,$Bin,(Join-Path $State "logs"),(Join-Path $State "runtime") | Out-Null
 
-foreach ($tool in @("git","cargo","rebar3","python","gleam","escript")) {
+foreach ($tool in @("git","cargo","rebar3","python")) {
   if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
     throw "Missing required tool: $tool"
   }
@@ -34,9 +34,15 @@ foreach ($component in $Manifest.components) {
   Checkout-Exact $component.repo $component.rev (Join-Path $Src $component.name)
 }
 
-$InternalCli = $Manifest.clients | Where-Object { $_.role -eq "internal-operator-cli" } | Select-Object -First 1
-if ($null -eq $InternalCli) { throw "Manifest has no internal-operator-cli client" }
-Checkout-Exact $InternalCli.repo $InternalCli.rev (Join-Path $Src $InternalCli.name)
+$InstallGleamClient = $env:BMSCL_INSTALL_GLEAM_CLIENT -eq "1"
+$GleamClient = $Manifest.clients | Where-Object { $_.role -eq "alternate-end-user-cli" } | Select-Object -First 1
+if ($InstallGleamClient) {
+  if ($null -eq $GleamClient) { throw "Manifest has no alternate-end-user-cli client" }
+  foreach ($tool in @("gleam","escript")) {
+    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Missing optional tool: $tool" }
+  }
+  Checkout-Exact $GleamClient.repo $GleamClient.rev (Join-Path $Src $GleamClient.name)
+}
 
 cargo build --release --manifest-path (Join-Path $Src "desktop-daemon\Cargo.toml")
 if ($LASTEXITCODE -ne 0) { throw "desktop daemon build failed" }
@@ -53,24 +59,26 @@ try {
   Pop-Location
 }
 
-Push-Location (Join-Path $Src $InternalCli.name)
-try {
-  gleam export escript
-  if ($LASTEXITCODE -ne 0) { throw "internal Gleam CLI export failed" }
-} finally {
-  Pop-Location
-}
-
 Copy-Item (Join-Path $Src "desktop-daemon\target\release\beamscale-desktop-daemon.exe") $Bin -Force
 Copy-Item (Join-Path $Src "compiler\target\release\bmscl-compiler.exe") $Bin -Force
 Copy-Item (Join-Path $Src "cli\target\release\bmscl.exe") $Bin -Force
-Copy-Item (Join-Path $Src "$($InternalCli.name)\bmscl_cli") (Join-Path $Bin "bmscl-internal.escript") -Force
 
-$InternalWrapper = Join-Path $Bin "bmscl-internal.cmd"
-@"
+$GleamWrapper = $null
+if ($InstallGleamClient) {
+  Push-Location (Join-Path $Src $GleamClient.name)
+  try {
+    gleam export escript
+    if ($LASTEXITCODE -ne 0) { throw "alternate Gleam CLI export failed" }
+  } finally {
+    Pop-Location
+  }
+  Copy-Item (Join-Path $Src "$($GleamClient.name)\bmscl_cli") (Join-Path $Bin "bmscl-gleam.escript") -Force
+  $GleamWrapper = Join-Path $Bin "bmscl-gleam.cmd"
+  @"
 @echo off
-escript "%~dp0bmscl-internal.escript" %*
-"@ | Set-Content -NoNewline -Encoding ascii $InternalWrapper
+escript "%~dp0bmscl-gleam.escript" %*
+"@ | Set-Content -NoNewline -Encoding ascii $GleamWrapper
+}
 
 function Quote-PowerShellLiteral([string]$Value) {
   return "'" + $Value.Replace("'", "''") + "'"
@@ -82,11 +90,11 @@ $EnvLines = @(
   ('$env:BMSCL_DAEMON_URL = ' + (Quote-PowerShellLiteral "http://127.0.0.1:9587")),
   ('$env:BMSCL_COMPILER = ' + (Quote-PowerShellLiteral (Join-Path $Bin "bmscl-compiler.exe"))),
   ('$env:BMSCL_SUPERVISOR_ROOT = ' + (Quote-PowerShellLiteral (Join-Path $Src "supervisor"))),
-  ('$env:BMSCL_INTERNAL_CLI = ' + (Quote-PowerShellLiteral $InternalWrapper)),
+  ('$env:BMSCL_CLI = ' + (Quote-PowerShellLiteral (Join-Path $Bin "bmscl.exe"))),
   ('$env:PATH = ' + (Quote-PowerShellLiteral ($Bin + ';')) + ' + $env:PATH')
 )
 $EnvLines | Set-Content -Encoding utf8 $EnvFile
 
 Write-Host "BeamScale desktop appliance bootstrapped at $State"
-Write-Host "  external CLI: $(Join-Path $Bin "bmscl.exe")"
-Write-Host "  internal CLI: $InternalWrapper"
+Write-Host "  canonical CLI: $(Join-Path $Bin "bmscl.exe")"
+if ($GleamWrapper) { Write-Host "  alternate Gleam CLI: $GleamWrapper" }

@@ -10,8 +10,8 @@ $EnvFile = Join-Path $State "env.ps1"
 if (-not (Test-Path $EnvFile)) { throw "Run scripts\bootstrap.ps1 first" }
 . $EnvFile
 
-$InternalCli = $env:BMSCL_INTERNAL_CLI
-if (-not $InternalCli -or -not (Test-Path $InternalCli)) { throw "Internal CLI missing: $InternalCli" }
+$Cli = $env:BMSCL_CLI
+if (-not $Cli -or -not (Test-Path $Cli)) { throw "Canonical CLI missing: $Cli" }
 
 $PidFile = Join-Path $State "daemon.pid"
 $LogFile = Join-Path $State "logs\daemon.log"
@@ -41,15 +41,14 @@ for ($i=0; $i -lt 50; $i++) {
 }
 if (-not $healthy) { throw "BeamScale desktop daemon did not become healthy" }
 
-if ($Project) { & $InternalCli local runtime start $Project; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+if ($Project) { & $Cli local start $Project; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
 
 if ($env:BMSCL_TUNNEL_NAME) {
-  $args = @("local","tunnel","start",$env:BMSCL_TUNNEL_NAME)
+  $args = @("local","expose",$env:BMSCL_TUNNEL_NAME)
   if ($env:BMSCL_TUNNEL_HOSTNAME) { $args += @("--hostname",$env:BMSCL_TUNNEL_HOSTNAME) }
-  if ($env:BMSCL_TUNNEL_CONFIG) { $args += @("--config",$env:BMSCL_TUNNEL_CONFIG) }
-  & $InternalCli @args
+  & $Cli @args
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-& $InternalCli local status
+& $Cli local status
 exit $LASTEXITCODE

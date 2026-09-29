@@ -3,7 +3,7 @@ project: beamscale-desktop
 allow_lazy_start: false
 source:
   repository: https://github.com/beamscale/beamscale-desktop-daemon.git
-  commit: 1697b2a09c4bc23f0c06a596f09f3d6cf9b429ff
+  commit: f795bd5db3a328acedc950df0f8b63b644746557
   checkout_dir: tmp/dev/beamscale-desktop-daemon
 services:
   daemon:
@@ -12,9 +12,8 @@ services:
       - ["cargo", "build", "--release"]
     command: ["./target/release/beamscale-desktop-daemon"]
     environment:
-      BMSCL_DESKTOP_ADDR: "127.0.0.1:9587"
+      BMSCL_DAEMON_LISTEN: "127.0.0.1:9587"
       BMSCL_LOCAL_INGRESS_URL: "http://127.0.0.1:8080"
-      BMSCL_START_BEAM: "false"
     healthcheck:
       command: ["curl", "--fail", "--silent", "http://127.0.0.1:9587/healthz"]
       interval_ms: 250

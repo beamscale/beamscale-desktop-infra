@@ -9,7 +9,7 @@ BIN="$STATE/bin"
 mkdir -p "$SRC" "$BIN" "$STATE/logs" "$STATE/runtime"
 python3 "$ROOT/scripts/validate_manifest.py"
 
-for tool in git python3 cargo erl rebar3 gleam escript; do
+for tool in git python3 cargo erl rebar3; do
   command -v "$tool" >/dev/null 2>&1 || {
     echo "missing required tool: $tool" >&2
     exit 1
@@ -26,10 +26,11 @@ manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
 root = pathlib.Path(sys.argv[2])
 
 wanted = list(manifest["components"])
-wanted.extend(
-    client for client in manifest.get("clients", [])
-    if client.get("role") == "internal-operator-cli"
-)
+if __import__("os").environ.get("BMSCL_INSTALL_GLEAM_CLIENT") == "1":
+    wanted.extend(
+        client for client in manifest.get("clients", [])
+        if client.get("role") == "alternate-end-user-cli"
+    )
 
 for component in wanted:
     dest = root / component["name"]
@@ -54,29 +55,36 @@ cargo build --release --manifest-path "$SRC/desktop-daemon/Cargo.toml"
 cargo build --release --manifest-path "$SRC/compiler/Cargo.toml"
 cargo build --release --manifest-path "$SRC/cli/Cargo.toml"
 ( cd "$SRC/supervisor" && rebar3 compile )
-( cd "$SRC/cli-gleam" && gleam export escript )
-
 cp "$SRC/desktop-daemon/target/release/beamscale-desktop-daemon" "$BIN/"
+cp "$SRC/desktop-daemon/target/release/beamscale-service" "$BIN/"
 cp "$SRC/compiler/target/release/bmscl-compiler" "$BIN/"
 cp "$SRC/cli/target/release/bmscl" "$BIN/"
-cp "$SRC/cli-gleam/bmscl_cli" "$BIN/bmscl-internal.escript"
+chmod 0755 "$BIN/beamscale-desktop-daemon" "$BIN/beamscale-service" "$BIN/bmscl-compiler" "$BIN/bmscl"
 
-cat > "$BIN/bmscl-internal" <<EOF
+if [[ "${BMSCL_INSTALL_GLEAM_CLIENT:-0}" == "1" ]]; then
+  command -v gleam >/dev/null 2>&1 || { echo "missing optional tool: gleam" >&2; exit 1; }
+  command -v escript >/dev/null 2>&1 || { echo "missing optional tool: escript" >&2; exit 1; }
+  ( cd "$SRC/cli-gleam" && gleam export escript )
+  cp "$SRC/cli-gleam/bmscl_cli" "$BIN/bmscl-gleam.escript"
+  cat > "$BIN/bmscl-gleam" <<EOF
 #!/usr/bin/env sh
-exec escript "$BIN/bmscl-internal.escript" "\$@"
+exec escript "$BIN/bmscl-gleam.escript" "\$@"
 EOF
-
-chmod 0755   "$BIN/beamscale-desktop-daemon"   "$BIN/bmscl-compiler"   "$BIN/bmscl"   "$BIN/bmscl-internal"   "$BIN/bmscl-internal.escript"
+  chmod 0755 "$BIN/bmscl-gleam" "$BIN/bmscl-gleam.escript"
+fi
 
 cat > "$STATE/env" <<EOF
 export BMSCL_DESKTOP_HOME="$STATE/runtime"
 export BMSCL_DAEMON_URL="http://127.0.0.1:9587"
 export BMSCL_COMPILER="$BIN/bmscl-compiler"
 export BMSCL_SUPERVISOR_ROOT="$SRC/supervisor"
-export BMSCL_INTERNAL_CLI="$BIN/bmscl-internal"
+export BMSCL_CLI="$BIN/bmscl"
+export BMSCL_SERVICE_BINARY="$BIN/beamscale-service"
 export PATH="$BIN:\$PATH"
 EOF
 
 echo "BeamScale desktop appliance bootstrapped at $STATE"
-echo "  external CLI: $BIN/bmscl"
-echo "  internal CLI: $BIN/bmscl-internal"
+echo "  canonical CLI: $BIN/bmscl"
+if [[ -x "$BIN/bmscl-gleam" ]]; then
+  echo "  alternate Gleam CLI: $BIN/bmscl-gleam"
+fi

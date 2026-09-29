@@ -17,12 +17,12 @@ Cloudflare edge -> cloudflared -> http://127.0.0.1:8080 -> one BEAM OS process /
 
 ## CLI roles
 
-The desktop appliance intentionally installs two different CLI surfaces:
+The desktop appliance has one canonical lifecycle surface:
 
-- `bmscl` — Rust, external/end-user CLI for development, build, verification, deployment, and a small user-friendly local-hosting workflow.
-- `bmscl-internal` — Gleam/OTP, internal/operator CLI for raw runtime/tunnel/update controls plus agent and infrastructure operations.
+- `bmscl` — Rust, canonical end-user CLI for development, build, verification, deployment, service management, and local hosting.
+- `bmscl-gleam` — optional Gleam/OTP peer client. Install it with `BMSCL_INSTALL_GLEAM_CLIENT=1`; it talks to the same daemon contract and is not a second lifecycle authority.
 
-Automation in this repository must use `bmscl-internal` for daemon lifecycle operations. The end-user CLI must not become the transport for agent leasing, arbitrary infra dispatch, update-root changes, or custom daemon internals. The daemon reinforces the distinction with separate user and operator tokens.
+Automation in this repository uses the canonical Rust `bmscl local start|stop|restart|expose|unexpose|status` surface. Raw daemon implementation details are not a public appliance contract. Machine/operator authority remains protected by the daemon's separate operator credential and internal endpoints.
 
 ## Quick start
 
@@ -42,7 +42,7 @@ Unix/macOS:
 ./scripts/bootstrap.sh
 ./scripts/up.sh ./my-project
 ./scripts/status.sh
-./scripts/install-service.sh   # optional: restore daemon at login
+./scripts/install-service.sh   # optional: Rust-managed restore at login
 ```
 
 Windows PowerShell:
@@ -52,10 +52,22 @@ Windows PowerShell:
 .\scripts\bootstrap.ps1
 .\scripts\up.ps1 -Project .\my-project
 .\scripts\status.ps1
-.\services\windows\install.ps1
+.\scripts\install-service.ps1
 ```
 
-The service installers point at the same appliance state directory used by bootstrap, including the daemon's `token`, `operator-token`, settings, and desired-state files. Uninstalling the service does not delete appliance state.
+The service wrappers delegate to the daemon repository's Rust `beamscale-service` manager. That manager owns typed launchd/systemd/Scheduled-Task rendering, validation, transactional upgrade rollback, and state-preserving uninstall. The appliance does not maintain a second shell-based service-manager implementation.
+
+All service registrations point at the same appliance state directory used by bootstrap, including the daemon's `token`, `operator-token`, settings, replay journal, DNS ownership, and desired-state files. Uninstalling the service does not delete appliance state.
+
+## Optional Gleam client
+
+The core appliance does not require Gleam or `escript`. To materialize the alternate Gleam client during bootstrap:
+
+```sh
+BMSCL_INSTALL_GLEAM_CLIENT=1 ./scripts/bootstrap.sh
+```
+
+Both clients use the same authenticated loopback daemon and should observe the same desired/runtime/tunnel state.
 
 ## ORES Compose local deployment
 
@@ -69,7 +81,7 @@ ores-compose up .ores-compose.yaml
 
 Cloudflare/public ingress remains promotion-gated until the separate BEAM origin and dedicated remote-auth boundary are in the compose lifecycle.
 
-The daemon source is exact-commit pinned, loopback-only, and executed from the built release binary. Stable promotion remains blocked until the daemon repository commits a Cargo lockfile and the build switches to `--locked`.
+The daemon source is exact-commit pinned, loopback-only, and executed from the built release binary. The compose file uses the canonical `BMSCL_DAEMON_LISTEN` variable; obsolete compatibility aliases are not part of the appliance contract. Stable promotion remains blocked until the daemon repository commits a Cargo lockfile and the build switches to `--locked`.
 
 See [docs/local-deployment.md](docs/local-deployment.md) and [appliance.json](appliance.json) for the audited boundary and promotion gates.
 

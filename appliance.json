@@ -76,6 +76,7 @@
     "origin_auth": "dedicated-remote-auth-required",
     "promotion_reason": "The same-BEAM loopback ingress now exists, but public promotion remains blocked until exact-head CI/release evidence and the dedicated remote-auth boundary are executed and promoted."
   },
+  "quota_admission_profile": "quota-admission.json",
   "update": {
     "mode": "exact-revision",
     "allow_mutable_latest": false,
@@ -89,7 +90,8 @@
     "common_layer_pinned": true,
     "common_layer_ci_verified": false,
     "compiler_lockfile_committed": false,
-    "cli_lockfile_committed": false
+    "cli_lockfile_committed": false,
+    "quota_admission_wired": false
   },
   "cli_profiles": {
     "end_user": {
@@ -119,7 +121,7 @@
     "repository": "ORESoftware/ores-common-desktop-infra",
     "checkout_dir": "tmp/dev/ores-common-desktop-infra",
     "status": "pinned",
-    "revision": "c98aee842535429bc07b5e4437a2fb84d8f00d25",
+    "revision": "253f019383ae947474bb978f9105e02749bf7968",
     "capabilities": [
       "consumer-validation",
       "loopback-policy",
@@ -133,6 +135,7 @@
       "mixed-compute-plane",
       "runtime-isolation",
       "stable-ingress",
+      "quota-admission",
       "cross-platform-packaging",
       "typed-mutation-auth",
       "middleware-executor-isolation",

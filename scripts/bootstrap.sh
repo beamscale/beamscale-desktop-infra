@@ -51,7 +51,7 @@ for component in wanted:
         raise SystemExit(f"{component['repo']} resolved to {head}, expected {rev}")
 PY
 
-cargo build --release --manifest-path "$SRC/desktop-daemon/Cargo.toml"
+cargo build --release --locked --manifest-path "$SRC/desktop-daemon/Cargo.toml"
 cargo build --release --manifest-path "$SRC/compiler/Cargo.toml"
 cargo build --release --manifest-path "$SRC/cli/Cargo.toml"
 ( cd "$SRC/supervisor" && rebar3 compile )

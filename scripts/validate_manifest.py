@@ -96,7 +96,23 @@ if "BMSCL_START_BEAM:" in compose:
 if 'BMSCL_DAEMON_LISTEN: "127.0.0.1:9587"' not in compose:
     errors.append("ores-compose must bind canonical daemon listen address")
 
-if data.get("channel") == "promoted" and not all(data.get("promotion_gates", {}).values()):
+gates = data.get("promotion_gates", {})
+if gates.get("daemon_lockfile_committed") is not True:
+    errors.append("desktop daemon lockfile gate must be true")
+for pending_gate in ("compiler_lockfile_committed", "cli_lockfile_committed"):
+    if pending_gate not in gates:
+        errors.append(f"missing promotion gate: {pending_gate}")
+
+bootstrap_sh = (root / "scripts" / "bootstrap.sh").read_text()
+bootstrap_ps1 = (root / "scripts" / "bootstrap.ps1").read_text()
+if 'cargo build --release --locked --manifest-path "$SRC/desktop-daemon/Cargo.toml"' not in bootstrap_sh:
+    errors.append("Unix bootstrap must build desktop daemon with --locked")
+if 'cargo build --release --locked --manifest-path (Join-Path $Src "desktop-daemon\\Cargo.toml")' not in bootstrap_ps1:
+    errors.append("Windows bootstrap must build desktop daemon with --locked")
+if '["cargo", "build", "--release", "--locked"]' not in compose:
+    errors.append("ores-compose daemon build must use --locked")
+
+if data.get("channel") == "promoted" and not all(gates.values()):
     errors.append("promoted channel requires all gates")
 
 if errors:

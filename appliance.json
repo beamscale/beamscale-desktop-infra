@@ -57,7 +57,7 @@
     {
       "name": "desktop-rust",
       "repo": "beamscale/bmscl-desktop-app.rs",
-      "rev": "64607c072ccc07863b1b2cb67560d5dfbc6f16b6",
+      "rev": "ae2ca2df99d25318840a4545dd11bdbd95a7d3a0",
       "promoted": false
     }
   ],
@@ -85,9 +85,11 @@
     "private_repo_ci_evidence": false,
     "desktop_ingress_ci_green": false,
     "public_ingress_ready": false,
-    "daemon_lockfile_committed": false,
+    "daemon_lockfile_committed": true,
     "common_layer_pinned": true,
-    "common_layer_ci_verified": false
+    "common_layer_ci_verified": false,
+    "compiler_lockfile_committed": false,
+    "cli_lockfile_committed": false
   },
   "cli_profiles": {
     "end_user": {

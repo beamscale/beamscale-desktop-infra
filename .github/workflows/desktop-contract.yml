@@ -134,7 +134,7 @@ jobs:
 
           daemon = doc.fetch("services").fetch("daemon")
           abort "daemon must use host runtime" unless daemon["runtime"] == "host"
-          abort "daemon must build before start" unless daemon["build"] == [["cargo", "build", "--release"]]
+          abort "daemon must build before start with committed lockfile" unless daemon["build"] == [["cargo", "build", "--release", "--locked"]]
           command = daemon.fetch("command")
           abort "daemon must run the built release binary directly" unless command.length == 1 && command.first.start_with?("./target/release/")
           abort "local compose must not start a public tunnel" if doc.fetch("services").key?("tunnel")

@@ -81,7 +81,7 @@ ores-compose up .ores-compose.yaml
 
 Cloudflare/public ingress remains promotion-gated until the separate BEAM origin and dedicated remote-auth boundary are in the compose lifecycle.
 
-The daemon source is exact-commit pinned, loopback-only, and executed from the built release binary. The compose file uses the canonical `BMSCL_DAEMON_LISTEN` variable; obsolete compatibility aliases are not part of the appliance contract. Stable promotion remains blocked until the daemon repository commits a Cargo lockfile and the build switches to `--locked`.
+The daemon source is exact-commit pinned, loopback-only, and executed from the built release binary. The compose file uses the canonical `BMSCL_DAEMON_LISTEN` variable; obsolete compatibility aliases are not part of the appliance contract. The desktop daemon is now exact-revision and lockfile pinned, and daemon builds use `--locked`. Stable promotion still requires committed lockfiles for the compiler and canonical Rust CLI, plus executed exact-head CI/release evidence.
 
 See [docs/local-deployment.md](docs/local-deployment.md) and [appliance.json](appliance.json) for the audited boundary and promotion gates.
 

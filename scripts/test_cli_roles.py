@@ -75,6 +75,21 @@ if "BMSCL_INSTALL_GLEAM_CLIENT" not in bootstrap:
 if "BMSCL_CLI" not in bootstrap:
     errors.append("Unix bootstrap must export canonical BMSCL_CLI")
 
+for path in [root / "scripts" / "install-service.sh", root / "scripts" / "uninstall-service.sh"]:
+    text = path.read_text()
+    if "BMSCL_SERVICE_BINARY" not in text:
+        errors.append(f"{path.name}: must delegate to Rust beamscale-service")
+    for forbidden in ("systemctl ", "launchctl ", "schtasks", "sed "):
+        if forbidden in text:
+            errors.append(f"{path.name}: must not own service-manager implementation: {forbidden!r}")
+
+for path in [root / "scripts" / "install-service.ps1", root / "scripts" / "uninstall-service.ps1"]:
+    text = path.read_text()
+    if "BMSCL_SERVICE_BINARY" not in text:
+        errors.append(f"{path.name}: must delegate to Rust beamscale-service")
+    if re.search(r"\b(schtasks|Register-ScheduledTask|New-ScheduledTask)\b", text, re.IGNORECASE):
+        errors.append(f"{path.name}: must not own Windows service-manager implementation")
+
 bootstrap_ps1 = (root / "scripts" / "bootstrap.ps1").read_text()
 if "BMSCL_INSTALL_GLEAM_CLIENT" not in bootstrap_ps1:
     errors.append("Windows bootstrap must make the Gleam client explicitly optional")

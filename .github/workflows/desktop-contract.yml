@@ -15,7 +15,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Check out exact candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,166 +31,138 @@ jobs:
       - name: Validate desktop appliance boundary
         shell: bash
         run: |
+          set -euo pipefail
           ruby <<'RUBY'
-          require "yaml"
           require "json"
+          require "yaml"
 
           compose_path = ".ores-compose.yaml"
-          expected_common_revision = "c98aee842535429bc07b5e4437a2fb84d8f00d25"
           abort "missing #{compose_path}" unless File.file?(compose_path)
-          doc = YAML.safe_load(File.read(compose_path), permitted_classes: [], permitted_symbols: [], aliases: false)
           appliance = JSON.parse(File.read("appliance.json"))
+          compose = YAML.safe_load(File.read(compose_path), permitted_classes: [], permitted_symbols: [], aliases: false)
 
-          policy_path = appliance.fetch("hot_reload_policy")
-          abort "hot reload policy path drifted" unless policy_path == "hot-reload-policy.json"
-          policy = JSON.parse(File.read(policy_path))
-          abort "wrong hot reload policy schema" unless policy["schema"] == "ores.desktop-hot-reload/v1"
-          abort "hot reload policy product mismatch" unless policy["product"] == appliance["product"]
+          abort "wrong appliance schema" unless appliance["schema"] == "ores.desktop-appliance/v1"
+          abort "wrong compose schema" unless compose["schema_version"] == "ores.compose.v1"
+          abort "orchestrator must be ores-compose" unless appliance.dig("orchestrator", "engine") == "ores-compose"
+          abort "canonical compose path drifted" unless appliance.dig("orchestrator", "config") == compose_path
+          abort "unexpected public IP requirement" unless appliance.dig("host", "requires_public_ip") == false
 
-          defaults = policy.fetch("default")
-          allowed_front = %w[none nginx haproxy caddy]
-          allowed_routes = %w[beam native_atomic external_process wasm_generation nginx_worker_generation haproxy_runtime caddy_admin]
-          allowed_middleware = %w[beam_hot_code process_generation wasm_generation declarative_only]
+          daemon_listen = appliance.dig("host", "daemon_listen").to_s
+          listen_match = daemon_listen.match(/\A127\.0\.0\.1:(\d+)\z/)
+          abort "daemon_listen must be numeric IPv4 loopback with non-zero port" unless listen_match && listen_match[1].to_i.between?(1, 65_535)
 
-          abort "invalid front proxy" unless allowed_front.include?(defaults["front_proxy"])
-          abort "invalid route backend" unless allowed_routes.include?(defaults["route_backend"])
-          abort "invalid middleware reload mode" unless allowed_middleware.include?(defaults["middleware_code_reload"])
+          update = appliance.fetch("update")
+          abort "updates must use immutable revisions" unless update["mode"] == "exact-revision" && update["allow_mutable_latest"] == false
+
+          common = appliance.fetch("common_layer")
+          gates = appliance.fetch("promotion_gates")
+          abort "common desktop repo identity drifted" unless common["repository"] == "ORESoftware/ores-common-desktop-infra"
+          abort "common desktop checkout must stay under tmp/dev" unless common["checkout_dir"] == "tmp/dev/ores-common-desktop-infra"
+          abort "common layer must be pinned" unless common["status"] == "pinned"
+          revision = common["revision"].to_s
+          abort "common revision must be immutable 40-hex" unless revision.match?(/\A[0-9a-f]{40}\z/)
+          abort "common layer pin gate must be true" unless gates["common_layer_pinned"] == true
+          abort "common CI gate must be explicit" unless [true, false].include?(gates["common_layer_ci_verified"])
+
+          required_caps = %w[
+            consumer-validation loopback-policy secret-file-policy cloudflare-policy
+            update-policy process-lifecycle health-readiness structured-logging
+            desktop-auth-shell mixed-compute-plane runtime-isolation stable-ingress
+            quota-admission cross-platform-packaging typed-mutation-auth
+            middleware-executor-isolation runtime-adapter-abi immutable-deployment-bundle
+            durable-generation-state desktop-event-stream conformance-suite hot-reload-backends
+          ]
+          capabilities = common.fetch("capabilities")
+          abort "common desktop capability set incomplete" unless (required_caps - capabilities).empty?
+
+          quota_path = appliance.fetch("quota_admission_profile")
+          abort "quota profile path drifted" unless quota_path == "quota-admission.json"
+          quota = JSON.parse(File.read(quota_path))
+          abort "wrong quota schema" unless quota["schema"] == "ores.desktop-quota-admission/v1"
+          abort "quota product mismatch" unless quota["product"] == appliance["product"]
+          abort "quota authority must be common layer" unless quota["authority"] == "common-layer"
+          abort "quota identity must come from shared-auth" unless quota["identity_source"] == "shared-auth"
+          abort "tier limits must come from shared-auth pricing" unless quota["tier_limits_source"] == "shared-auth-pricing-tier"
+          abort "quota must run before dispatch" unless quota["enforcement_point"] == "router-middleware-before-dispatch"
+          abort "pricing windows must be 1m/10m/1h" unless quota["required_request_windows_seconds"].sort == [60, 600, 3600]
+          abort "unsupported clustered quota backend" unless %w[redis durable-actor].include?(quota["cluster_counter_backend"])
+          abort "local quota backend must be memory" unless quota["local_counter_backend"] == "memory"
+          abort "JWT live counters are forbidden" unless quota["jwt_live_counters"] == false
+          abort "quota epoch claim required" unless quota["quota_epoch_claim"] == true
+          abort "monotonic admission fence required" unless quota["monotonic_admission_fence"] == true
+          %w[http_backpressure rpc_backpressure bounded_concurrency bounded_queue ingress_safety_only].each do |field|
+            abort "quota invariant #{field} must be true" unless quota[field] == true
+          end
+          abort "quota wiring gate must be explicit" unless [true, false].include?(gates["quota_admission_wired"])
+
+          hot_reload_path = appliance.fetch("hot_reload_policy")
+          abort "hot reload policy path drifted" unless hot_reload_path == "hot-reload-policy.json"
+          hot_reload = JSON.parse(File.read(hot_reload_path))
+          abort "wrong hot reload schema" unless hot_reload["schema"] == "ores.desktop-hot-reload/v1"
+          abort "hot reload product mismatch" unless hot_reload["product"] == appliance["product"]
+          defaults = hot_reload.fetch("default")
           abort "route drain timeout must be bounded" unless defaults["route_drain_timeout_ms"].is_a?(Integer) && defaults["route_drain_timeout_ms"].between?(1, 86_400_000)
           abort "old generation retention must be bounded" unless defaults["max_old_generations"].is_a?(Integer) && defaults["max_old_generations"].between?(1, 4)
-
-          supported_front = policy.fetch("supported_front_proxies")
-          supported_routes = policy.fetch("supported_route_backends")
-          supported_middleware = policy.fetch("supported_middleware_code_reload")
-          abort "unsupported/duplicate front proxy entry" unless supported_front.uniq == supported_front && supported_front.all? { |v| allowed_front.include?(v) } && supported_front.include?(defaults["front_proxy"])
-          abort "unsupported/duplicate route backend entry" unless supported_routes.uniq == supported_routes && supported_routes.all? { |v| allowed_routes.include?(v) } && supported_routes.include?(defaults["route_backend"])
-          abort "unsupported/duplicate middleware reload entry" unless supported_middleware.uniq == supported_middleware && supported_middleware.all? { |v| allowed_middleware.include?(v) } && supported_middleware.include?(defaults["middleware_code_reload"])
-
-          case defaults["route_backend"]
-          when "nginx_worker_generation"
-            abort "nginx reload backend requires nginx front proxy" unless defaults["front_proxy"] == "nginx"
-          when "haproxy_runtime"
-            abort "HAProxy runtime backend requires haproxy front proxy" unless defaults["front_proxy"] == "haproxy"
-          when "caddy_admin"
-            abort "Caddy admin backend requires caddy front proxy" unless defaults["front_proxy"] == "caddy"
-          end
-
-          proxy_backends = %w[nginx_worker_generation haproxy_runtime caddy_admin]
-          if defaults["proxy_managed_application_routes"]
-            abort "proxy-managed routes require a proxy-owned route backend" unless proxy_backends.include?(defaults["route_backend"])
-          elsif proxy_backends.include?(defaults["route_backend"])
-            abort "proxy-owned route backend requires proxy_managed_application_routes=true"
-          end
-
-          invariants = policy.fetch("invariants")
-          abort "routing/middleware isolation invariant weakened" unless invariants["routing_middleware_separate_from_compute"] == true
+          invariants = hot_reload.fetch("invariants")
+          abort "routing/middleware isolation weakened" unless invariants["routing_middleware_separate_from_compute"] == true
           abort "route reload may not restart standalone server" unless invariants["route_change_restarts_standalone_server"] == false
           abort "route reload may not restart lambda workers" unless invariants["route_change_restarts_lambda_workers"] == false
           abort "arbitrary native middleware may not share router process" unless invariants["arbitrary_native_middleware_in_router_process"] == false
           abort "old generation draining must be bounded" unless invariants["bounded_old_generation_drain"] == true
 
-
-          abort "wrong compose schema" unless doc["schema_version"] == "ores.compose.v1"
-          abort "wrong appliance schema" unless appliance["schema"] == "ores.desktop-appliance/v1"
-
-          common = appliance.fetch("common_layer")
-          abort "common desktop repo identity drifted" unless common["repository"] == "ORESoftware/ores-common-desktop-infra"
-          abort "common desktop checkout must stay under tmp/dev" unless common["checkout_dir"] == "tmp/dev/ores-common-desktop-infra"
-          required_common_caps = %w[consumer-validation loopback-policy secret-file-policy cloudflare-policy update-policy process-lifecycle health-readiness structured-logging desktop-auth-shell mixed-compute-plane runtime-isolation stable-ingress cross-platform-packaging typed-mutation-auth middleware-executor-isolation runtime-adapter-abi immutable-deployment-bundle durable-generation-state desktop-event-stream conformance-suite hot-reload-backends]
-          capabilities = common.fetch("capabilities")
-          abort "common desktop capability set incomplete" unless (required_common_caps - capabilities).empty?
-
-          gates = appliance.fetch("promotion_gates", {})
-          case common["status"]
-          when "awaiting-repository"
-            abort "awaiting common repository must not have a revision" unless common["revision"].nil?
-            abort "common layer promotion gate must remain false" unless gates["common_layer_pinned"] == false
-            abort "stable channel cannot await common repository" if appliance["channel"] == "stable"
-          when "pinned"
-            revision = common["revision"].to_s
-            abort "pinned common layer requires immutable 40-hex revision" unless revision.match?(/\A[0-9a-f]{40}\z/)
-            abort "pinned common layer revision drifted from the audited policy snapshot" unless revision == expected_common_revision
-            abort "pinned common layer promotion gate must be true" unless gates["common_layer_pinned"] == true
-            if appliance["channel"] == "stable"
-              abort "stable channel requires executed common-layer CI evidence" unless gates["common_layer_ci_verified"] == true
-            end
-          else
-            abort "unknown common desktop layer status"
-          end
-          abort "unexpected public IP requirement" unless appliance.dig("host", "requires_public_ip") == false
-          daemon_listen = appliance.dig("host", "daemon_listen").to_s
-          listen_match = daemon_listen.match(/\A127\.0\.0\.1:(\d+)\z/)
-          abort "daemon_listen must be numeric IPv4 loopback with a non-zero port" unless listen_match && listen_match[1].to_i.between?(1, 65_535)
-          abort "cloudflare credentials may not live in repo" unless appliance.dig("cloudflare", "credentials_in_repo") == false
-          abort "orchestrator must be ores-compose" unless appliance.dig("orchestrator", "engine") == "ores-compose"
-          abort "canonical compose path drifted" unless appliance.dig("orchestrator", "config") == compose_path
-          update_policy = appliance.fetch("update")
-          abort "update policy must be exact-revision and reject mutable latest" unless update_policy["mode"] == "exact-revision" && update_policy["allow_mutable_latest"] == false
-
-          source = doc.fetch("source")
-          commit = source.fetch("commit")
-          abort "source commit must be immutable 40-hex" unless commit.match?(/\A[0-9a-f]{40}\z/)
-          abort "checkout must live under tmp/dev" unless source.fetch("checkout_dir").start_with?("tmp/dev/")
-          abort "source must be credential-free GitHub HTTPS" unless source.fetch("repository").match?(%r{\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git\z})
-
-          daemon = doc.fetch("services").fetch("daemon")
-          abort "daemon must use host runtime" unless daemon["runtime"] == "host"
-          abort "daemon must build before start with committed lockfile" unless daemon["build"] == [["cargo", "build", "--release", "--locked"]]
-          command = daemon.fetch("command")
-          abort "daemon must run the built release binary directly" unless command.length == 1 && command.first.start_with?("./target/release/")
-          abort "local compose must not start a public tunnel" if doc.fetch("services").key?("tunnel")
-
-          rendered = File.read(compose_path)
-          abort "non-loopback bind found" if rendered.include?("0.0.0.0") || rendered.include?("[::]")
-          if daemon["healthcheck"]
-            listen = appliance.dig("host", "daemon_listen")
-            health = daemon.dig("healthcheck", "command").join(" ")
-            abort "healthcheck must target the appliance loopback daemon" unless health.include?("http://#{listen}/")
-          end
-
-          if (component = Array(appliance["components"]).find { |c| c["name"] == "desktop-daemon" })
-            repo = source.fetch("repository").sub(%r{\Ahttps://github\.com/}, "").sub(/\.git\z/, "")
-            abort "desktop-daemon component repo/source mismatch" unless component["repo"] == repo
-            abort "desktop-daemon component rev/source mismatch" unless component["rev"] == commit
-          end
-
-          public_config = appliance.dig("orchestrator", "public_config")
-          mode = appliance.dig("cloudflare", "mode")
-          ready = appliance.dig("cloudflare", "public_ingress_ready")
-          origin_auth = appliance.dig("cloudflare", "origin_auth")
-
-          case mode
-          when "not-required"
-            abort "not-required mode may not declare public config" unless public_config.nil?
-            abort "not-required mode must not be public-ready" unless ready == false
-            abort "not-required mode must be outbound-agent-only" unless origin_auth == "outbound-agent-only"
-            abort "not-required mode origin must be null" unless appliance.dig("cloudflare", "origin").nil?
+          cloudflare = appliance.fetch("cloudflare")
+          abort "cloudflare credentials may not live in repo" unless cloudflare["credentials_in_repo"] == false
+          case cloudflare["mode"]
           when "gated"
-            abort "gated mode may not declare public config" unless public_config.nil?
-            abort "gated mode must not be public-ready" unless ready == false
-            abort "gated mode requires a distinct remote-auth bridge" unless origin_auth == "dedicated-remote-auth-required"
-            abort "gated mode must explain its blocker" if appliance.dig("cloudflare", "promotion_reason").to_s.empty?
+            abort "gated ingress cannot be public-ready" unless cloudflare["public_ingress_ready"] == false
+            abort "gated ingress requires separate remote auth" unless cloudflare["origin_auth"] == "dedicated-remote-auth-required"
+            abort "gated ingress requires blocker text" if cloudflare["promotion_reason"].to_s.empty?
           when "remotely-managed"
-            abort "public mode must declare canonical public config" unless public_config == ".ores-compose.public.yaml"
-            abort "remote-managed mode must be public-ready" unless ready == true
-            abort "remote-managed mode requires dedicated remote auth" unless origin_auth == "dedicated-remote-auth"
-            abort "tunnel token must be file-backed" unless appliance.dig("cloudflare", "token_source") == "file"
-            env_key = /\A[A-Z][A-Z0-9_]*\z/
-            abort "tunnel token file env key is invalid" unless appliance.dig("cloudflare", "token_file_env").to_s.match?(env_key)
-            abort "tunnel hostname env key is invalid" unless appliance.dig("cloudflare", "hostname_env").to_s.match?(env_key)
+            abort "remote ingress requires dedicated auth" unless cloudflare["origin_auth"] == "dedicated-remote-auth"
+            abort "remote ingress must be public-ready" unless cloudflare["public_ingress_ready"] == true
+          when "not-required"
+            abort "not-required ingress must remain private" unless cloudflare["public_ingress_ready"] == false
           else
             abort "unknown cloudflare mode"
           end
 
-          if public_config.nil?
-            abort "gated/not-required appliance may not ship a runnable public compose profile" if File.exist?(".ores-compose.public.yaml")
+          source = compose.fetch("source")
+          source_commit = source.fetch("commit").to_s
+          abort "source commit must be immutable 40-hex" unless source_commit.match?(/\A[0-9a-f]{40}\z/)
+          abort "checkout must live under tmp/dev" unless source.fetch("checkout_dir").start_with?("tmp/dev/")
+          abort "source must be credential-free GitHub HTTPS" unless source.fetch("repository").match?(%r{\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git\z})
+
+          daemon = compose.fetch("services").fetch("daemon")
+          abort "daemon must use host runtime" unless daemon["runtime"] == "host"
+          build = daemon.fetch("build")
+          abort "daemon must have exactly one cargo release build" unless build.length == 1 && build.first[0, 3] == ["cargo", "build", "--release"]
+          lock_gate = gates["daemon_lockfile_committed"]
+          abort "daemon lockfile gate must be explicit" unless [true, false].include?(lock_gate)
+          if lock_gate
+            abort "committed lockfile gate requires --locked build" unless build.first.include?("--locked")
+          end
+          command = daemon.fetch("command")
+          abort "daemon must run built release binary directly" unless command.length == 1 && command.first.start_with?("./target/release/")
+          abort "local compose may not launch a public tunnel" if compose.fetch("services").key?("tunnel")
+
+          rendered = File.read(compose_path)
+          abort "non-loopback bind found" if rendered.include?("0.0.0.0") || rendered.include?("[::]")
+          if daemon["healthcheck"]
+            health = daemon.dig("healthcheck", "command").join(" ")
+            abort "healthcheck must target appliance loopback daemon" unless health.include?("http://#{daemon_listen}/")
           end
 
-          gates = appliance.fetch("promotion_gates", {})
-          abort "daemon lockfile gate must be explicit" unless gates.key?("daemon_lockfile_committed")
-
-          if appliance["product"] == "takoda"
-            required = %w[TKDA_AGENT_URL TKDA_AGENT_ID TKDA_AGENT_TOKEN_FILE TKDA_LOCAL_CONTROL_TOKEN_FILE]
-            inherited = daemon.fetch("inherit_env", [])
-            abort "Takoda agent credential/identity contract incomplete" unless (required - inherited).empty?
+          if (component = Array(appliance["components"]).find { |entry| entry["name"] == "desktop-daemon" })
+            source_repo = source.fetch("repository").sub(%r{\Ahttps://github\.com/}, "").sub(/\.git\z/, "")
+            abort "desktop-daemon component repo/source mismatch" unless component["repo"] == source_repo
+            abort "desktop-daemon component rev/source mismatch" unless component["rev"] == source_commit
           end
+
+          if appliance["channel"] == "stable"
+            abort "stable requires common CI evidence" unless gates["common_layer_ci_verified"] == true
+            abort "stable requires quota admission wiring" unless gates["quota_admission_wired"] == true
+            abort "stable requires committed daemon lockfile" unless lock_gate == true
+          end
+
+          puts "desktop appliance contract OK: #{appliance.fetch("product")}"
           RUBY

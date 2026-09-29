@@ -6,10 +6,10 @@ STATE="${BMSCL_DESKTOP_STATE:-$ROOT/.desktop}"
 
 if [[ -f "$STATE/env" ]]; then
   source "$STATE/env"
-  INTERNAL_CLI="${BMSCL_INTERNAL_CLI:-$STATE/bin/bmscl-internal}"
-  if [[ -x "$INTERNAL_CLI" ]]; then
-    "$INTERNAL_CLI" local tunnel stop >/dev/null 2>&1 || true
-    "$INTERNAL_CLI" local runtime stop >/dev/null 2>&1 || true
+  CLI="${BMSCL_CLI:-$STATE/bin/bmscl}"
+  if [[ -x "$CLI" ]]; then
+    "$CLI" local unexpose >/dev/null 2>&1 || true
+    "$CLI" local stop >/dev/null 2>&1 || true
   fi
 fi
 

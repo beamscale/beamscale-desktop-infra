@@ -56,9 +56,10 @@ cargo build --release --manifest-path "$SRC/compiler/Cargo.toml"
 cargo build --release --manifest-path "$SRC/cli/Cargo.toml"
 ( cd "$SRC/supervisor" && rebar3 compile )
 cp "$SRC/desktop-daemon/target/release/beamscale-desktop-daemon" "$BIN/"
+cp "$SRC/desktop-daemon/target/release/beamscale-service" "$BIN/"
 cp "$SRC/compiler/target/release/bmscl-compiler" "$BIN/"
 cp "$SRC/cli/target/release/bmscl" "$BIN/"
-chmod 0755 "$BIN/beamscale-desktop-daemon" "$BIN/bmscl-compiler" "$BIN/bmscl"
+chmod 0755 "$BIN/beamscale-desktop-daemon" "$BIN/beamscale-service" "$BIN/bmscl-compiler" "$BIN/bmscl"
 
 if [[ "${BMSCL_INSTALL_GLEAM_CLIENT:-0}" == "1" ]]; then
   command -v gleam >/dev/null 2>&1 || { echo "missing optional tool: gleam" >&2; exit 1; }
@@ -78,6 +79,7 @@ export BMSCL_DAEMON_URL="http://127.0.0.1:9587"
 export BMSCL_COMPILER="$BIN/bmscl-compiler"
 export BMSCL_SUPERVISOR_ROOT="$SRC/supervisor"
 export BMSCL_CLI="$BIN/bmscl"
+export BMSCL_SERVICE_BINARY="$BIN/beamscale-service"
 export PATH="$BIN:\$PATH"
 EOF
 

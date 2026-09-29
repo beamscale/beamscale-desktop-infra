@@ -32,8 +32,8 @@ jobs:
             "scripts/up.ps1",
             "scripts/down.ps1",
             "scripts/status.ps1",
-            "services/windows/install.ps1",
-            "services/windows/uninstall.ps1"
+            "scripts/install-service.ps1",
+            "scripts/uninstall-service.ps1"
           )) {
             [void][scriptblock]::Create((Get-Content -Raw $path))
           }
@@ -49,20 +49,22 @@ jobs:
           assert origin in readme, f'{origin} missing from README'
           assert origin in cloudflare, f'{origin} missing from cloudflare config'
           PY
-      - name: validate service-manager state wiring
+      - name: validate Rust service-manager authority
         run: |
           set -euo pipefail
-          grep -F 'BMSCL_DESKTOP_HOME=__RUNTIME_DIR__' services/linux/beamscale-desktop-daemon.service
-          grep -F 'ExecStart=__BINARY__' services/linux/beamscale-desktop-daemon.service
-          grep -F '__STATE_DIR__' services/linux/beamscale-desktop-daemon.service
-          grep -F '<key>BMSCL_DESKTOP_HOME</key><string>__RUNTIME_DIR__</string>' services/macos/com.beamscale.desktop-daemon.plist
-          grep -F '__BINARY__' services/macos/com.beamscale.desktop-daemon.plist
-          grep -F 'BMSCL_DESKTOP_HOME' services/windows/install.ps1
-          grep -F '127.0.0.1:9587' services/windows/install.ps1
+          grep -F 'BMSCL_SERVICE_BINARY' scripts/install-service.sh scripts/uninstall-service.sh
+          grep -F 'BMSCL_SERVICE_BINARY' scripts/install-service.ps1 scripts/uninstall-service.ps1
+          grep -F 'beamscale-service' scripts/bootstrap.sh scripts/bootstrap.ps1
+          if grep -REn '\\b(systemctl|launchctl|schtasks|Register-ScheduledTask|New-ScheduledTask)\\b'             scripts/install-service.sh scripts/uninstall-service.sh             scripts/install-service.ps1 scripts/uninstall-service.ps1; then
+            echo "service wrappers must delegate to Rust beamscale-service" >&2
+            exit 1
+          fi
       - name: ensure one desired-state authority
         run: test ! -e appliance.toml
-      - name: reject duplicate service trees
-        run: test ! -d service
+      - name: reject duplicate service-manager trees
+        run: |
+          test ! -d service
+          test ! -d services
       - name: reject obvious committed secrets
         run: |
           if git grep -nEI '(api[_-]?token|password|secret)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9+/=_-]{12,}' -- ':!*.example'; then exit 1; else exit 0; fi

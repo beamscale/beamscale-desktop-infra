@@ -9,15 +9,19 @@ on:
 permissions:
   contents: read
 
+env:
+  ZED_SHA: dfffc376331849d23f443c0288184fa17a47e904
+
 jobs:
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Clone zed-pkg/zed-cli branch
+      - name: Clone exact zed-pkg/zed-cli revision
         run: |
           set -euxo pipefail
           git clone --depth 1 --branch DEN-3488-explicit-local-links https://github.com/zed-pkg/zed-cli.git zed-cli
+          test "$(git -C zed-cli rev-parse HEAD)" = "$ZED_SHA"
       - name: Toolchain
         run: rustup show
       - name: Format
@@ -56,22 +60,13 @@ jobs:
           version = "0.1.0"
           EOF
           printf 'one\n' > "$SOURCE/live.txt"
-          (
-            cd "$SOURCE"
-            ZED_PKG_HOME="$HOME_DIR" "$BIN" link .
-          )
-          (
-            cd "$CONSUMER"
-            ZED_PKG_HOME="$HOME_DIR" "$BIN" link acme/widget --adapter none
-          )
+          (cd "$SOURCE" && ZED_PKG_HOME="$HOME_DIR" "$BIN" link .)
+          (cd "$CONSUMER" && ZED_PKG_HOME="$HOME_DIR" "$BIN" link acme/widget --adapter none)
           test -L "$CONSUMER/zed_modules/acme/widget"
           test "$(cat "$CONSUMER/zed_modules/acme/widget/live.txt")" = one
           printf 'two\n' > "$SOURCE/live.txt"
           test "$(cat "$CONSUMER/zed_modules/acme/widget/live.txt")" = two
           rm -rf "$SOURCE"
           test -L "$CONSUMER/zed_modules/acme/widget"
-          (
-            cd "$CONSUMER"
-            ZED_PKG_HOME="$HOME_DIR" "$BIN" unlink acme/widget
-          )
+          (cd "$CONSUMER" && ZED_PKG_HOME="$HOME_DIR" "$BIN" unlink acme/widget)
           test ! -L "$CONSUMER/zed_modules/acme/widget"

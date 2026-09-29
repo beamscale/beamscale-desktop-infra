@@ -4,7 +4,7 @@ python (Join-Path $RepoRoot "scripts\validate_manifest.py")
 if ($LASTEXITCODE -ne 0) { throw "appliance manifest validation failed" }
 
 $Missing = @()
-foreach ($tool in @("git","python","cargo","erl","rebar3","gleam","escript","cloudflared","curl")) {
+foreach ($tool in @("git","python","cargo","erl","rebar3","curl")) {
   if (Get-Command $tool -ErrorAction SilentlyContinue) {
     Write-Host ("ok   " + $tool)
   } else {
@@ -13,13 +13,45 @@ foreach ($tool in @("git","python","cargo","erl","rebar3","gleam","escript","clo
   }
 }
 
+if ($env:BMSCL_INSTALL_GLEAM_CLIENT -eq "1") {
+  foreach ($tool in @("gleam","escript")) {
+    if (Get-Command $tool -ErrorAction SilentlyContinue) {
+      Write-Host ("ok   " + $tool)
+    } else {
+      Write-Error ("MISS optional Gleam dependency " + $tool)
+      $Missing += $tool
+    }
+  }
+}
+
+$CloudflaredRequired = ($env:BMSCL_REQUIRE_CLOUDFLARED -eq "1") -or -not [string]::IsNullOrWhiteSpace($env:BMSCL_TUNNEL_NAME)
+if (Get-Command "cloudflared" -ErrorAction SilentlyContinue) {
+  Write-Host "ok   cloudflared"
+} elseif ($CloudflaredRequired) {
+  Write-Error "MISS cloudflared (required for configured public exposure)"
+  $Missing += "cloudflared"
+} else {
+  Write-Host "skip cloudflared (optional until local expose)"
+}
+
 $State = if ($env:BMSCL_DESKTOP_STATE) { $env:BMSCL_DESKTOP_STATE } else { Join-Path $RepoRoot ".desktop" }
 $EnvFile = Join-Path $State "env.ps1"
 if (Test-Path $EnvFile) {
   . $EnvFile
-  foreach ($cli in @((Join-Path $State "bin\bmscl.exe"), $env:BMSCL_INTERNAL_CLI)) {
-    if ($cli -and (Test-Path $cli)) { Write-Host ("ok   " + $cli) }
-    else { Write-Error ("MISS " + $cli); $Missing += $cli }
+  $Binaries = @(
+    (Join-Path $State "bin\beamscale-desktop-daemon.exe"),
+    $env:BMSCL_SERVICE_BINARY,
+    $env:BMSCL_CLI,
+    (Join-Path $State "bin\bmscl-compiler.exe")
+  )
+  foreach ($binary in $Binaries) {
+    if ($binary -and (Test-Path $binary)) { Write-Host ("ok   " + $binary) }
+    else { Write-Error ("MISS " + $binary); $Missing += $binary }
+  }
+  if ($env:BMSCL_INSTALL_GLEAM_CLIENT -eq "1") {
+    $GleamCli = Join-Path $State "bin\bmscl-gleam.cmd"
+    if (Test-Path $GleamCli) { Write-Host ("ok   " + $GleamCli) }
+    else { Write-Error ("MISS " + $GleamCli); $Missing += $GleamCli }
   }
 }
 

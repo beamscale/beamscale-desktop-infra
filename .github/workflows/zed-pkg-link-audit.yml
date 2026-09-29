@@ -20,15 +20,90 @@ jobs:
           git clone --depth 1 --branch DEN-3488-explicit-local-links https://github.com/zed-pkg/zed-cli.git zed-cli
       - name: Toolchain
         run: rustup show
-      - name: Format
+
+      - id: fmt
+        name: Format
+        continue-on-error: true
         working-directory: zed-cli
         run: cargo fmt --all -- --check
-      - name: Check
+
+      - id: check
+        name: Check
+        continue-on-error: true
         working-directory: zed-cli
         run: cargo check --all-targets --locked
-      - name: Local-link tests
+
+      - id: tests
+        name: Local-link tests
+        continue-on-error: true
         working-directory: zed-cli
         run: cargo test --locked linking::tests -- --nocapture
-      - name: Clippy
+
+      - id: clippy
+        name: Clippy
+        continue-on-error: true
         working-directory: zed-cli
         run: cargo clippy --all-targets --locked -- -D warnings
+
+      - id: e2e
+        name: npm-link-equivalent CLI smoke test
+        continue-on-error: true
+        working-directory: zed-cli
+        run: |
+          set -euxo pipefail
+          cargo build --locked --bin zed
+          BIN="$PWD/target/debug/zed"
+          ROOT="$RUNNER_TEMP/zed-link-e2e"
+          HOME_DIR="$ROOT/home"
+          SOURCE="$ROOT/source"
+          CONSUMER="$ROOT/consumer"
+          mkdir -p "$SOURCE" "$CONSUMER"
+          cat > "$SOURCE/.zpkg.toml" <<'EOF'
+          [package]
+          org = "acme"
+          name = "widget"
+          version = "0.1.0"
+          EOF
+          cat > "$CONSUMER/.zpkg.toml" <<'EOF'
+          [package]
+          org = "acme"
+          name = "consumer"
+          version = "0.1.0"
+          EOF
+          printf 'one\n' > "$SOURCE/live.txt"
+          (
+            cd "$SOURCE"
+            ZED_PKG_HOME="$HOME_DIR" "$BIN" link .
+          )
+          (
+            cd "$CONSUMER"
+            ZED_PKG_HOME="$HOME_DIR" "$BIN" link acme/widget --adapter none
+          )
+          test -L "$CONSUMER/zed_modules/acme/widget"
+          test "$(cat "$CONSUMER/zed_modules/acme/widget/live.txt")" = one
+          printf 'two\n' > "$SOURCE/live.txt"
+          test "$(cat "$CONSUMER/zed_modules/acme/widget/live.txt")" = two
+          rm -rf "$SOURCE"
+          test -L "$CONSUMER/zed_modules/acme/widget"
+          (
+            cd "$CONSUMER"
+            ZED_PKG_HOME="$HOME_DIR" "$BIN" unlink acme/widget
+          )
+          test ! -L "$CONSUMER/zed_modules/acme/widget"
+
+      - name: Require every audit gate
+        if: always()
+        env:
+          FMT: ${{ steps.fmt.outcome }}
+          CHECK: ${{ steps.check.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          CLIPPY: ${{ steps.clippy.outcome }}
+          E2E: ${{ steps.e2e.outcome }}
+        run: |
+          set -euxo pipefail
+          printf 'fmt=%s check=%s tests=%s clippy=%s e2e=%s\n' "$FMT" "$CHECK" "$TESTS" "$CLIPPY" "$E2E"
+          test "$FMT" = success
+          test "$CHECK" = success
+          test "$TESTS" = success
+          test "$CLIPPY" = success
+          test "$E2E" = success

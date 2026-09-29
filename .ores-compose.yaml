@@ -9,7 +9,7 @@ services:
   daemon:
     runtime: host
     build:
-      - ["cargo", "build", "--release"]
+      - ["cargo", "build", "--release", "--locked"]
     command: ["./target/release/beamscale-desktop-daemon"]
     environment:
       BMSCL_DAEMON_LISTEN: "127.0.0.1:9587"

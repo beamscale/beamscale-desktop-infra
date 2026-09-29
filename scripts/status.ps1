@@ -15,5 +15,6 @@ if (Test-Path $PidFile) {
 }
 if ($Running) { Write-Host ("daemon: running pid=" + $pidValue) } else { Write-Host "daemon: stopped" }
 
-& $env:BMSCL_INTERNAL_CLI local status
+if (-not $env:BMSCL_CLI -or -not (Test-Path $env:BMSCL_CLI)) { throw "Canonical CLI missing: $env:BMSCL_CLI" }
+& $env:BMSCL_CLI local status
 exit $LASTEXITCODE

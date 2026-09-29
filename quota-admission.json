@@ -1,0 +1,19 @@
+{
+  "schema": "ores.desktop-quota-admission/v1",
+  "product": "beamscale",
+  "authority": "common-layer",
+  "identity_source": "shared-auth",
+  "tier_limits_source": "shared-auth-pricing-tier",
+  "enforcement_point": "router-middleware-before-dispatch",
+  "required_request_windows_seconds": [60, 600, 3600],
+  "cluster_counter_backend": "redis",
+  "local_counter_backend": "memory",
+  "jwt_live_counters": false,
+  "quota_epoch_claim": true,
+  "monotonic_admission_fence": true,
+  "http_backpressure": true,
+  "rpc_backpressure": true,
+  "bounded_concurrency": true,
+  "bounded_queue": true,
+  "ingress_safety_only": true
+}

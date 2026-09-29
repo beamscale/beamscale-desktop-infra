@@ -60,6 +60,7 @@ try {
 }
 
 Copy-Item (Join-Path $Src "desktop-daemon\target\release\beamscale-desktop-daemon.exe") $Bin -Force
+Copy-Item (Join-Path $Src "desktop-daemon\target\release\beamscale-service.exe") $Bin -Force
 Copy-Item (Join-Path $Src "compiler\target\release\bmscl-compiler.exe") $Bin -Force
 Copy-Item (Join-Path $Src "cli\target\release\bmscl.exe") $Bin -Force
 
@@ -91,6 +92,7 @@ $EnvLines = @(
   ('$env:BMSCL_COMPILER = ' + (Quote-PowerShellLiteral (Join-Path $Bin "bmscl-compiler.exe"))),
   ('$env:BMSCL_SUPERVISOR_ROOT = ' + (Quote-PowerShellLiteral (Join-Path $Src "supervisor"))),
   ('$env:BMSCL_CLI = ' + (Quote-PowerShellLiteral (Join-Path $Bin "bmscl.exe"))),
+  ('$env:BMSCL_SERVICE_BINARY = ' + (Quote-PowerShellLiteral (Join-Path $Bin "beamscale-service.exe"))),
   ('$env:PATH = ' + (Quote-PowerShellLiteral ($Bin + ';')) + ' + $env:PATH')
 )
 $EnvLines | Set-Content -Encoding utf8 $EnvFile

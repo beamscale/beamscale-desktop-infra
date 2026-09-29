@@ -1,0 +1,34 @@
+name: Zed pkg local-link audit
+
+on:
+  push:
+    branches:
+      - test/zed-pkg-local-links-528
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Clone zed-pkg/zed-cli branch
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch DEN-3488-explicit-local-links https://github.com/zed-pkg/zed-cli.git zed-cli
+      - name: Toolchain
+        run: rustup show
+      - name: Format
+        working-directory: zed-cli
+        run: cargo fmt --all -- --check
+      - name: Check
+        working-directory: zed-cli
+        run: cargo check --all-targets --locked
+      - name: Local-link tests
+        working-directory: zed-cli
+        run: cargo test --locked linking::tests -- --nocapture
+      - name: Clippy
+        working-directory: zed-cli
+        run: cargo clippy --all-targets --locked -- -D warnings

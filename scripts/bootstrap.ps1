@@ -44,7 +44,7 @@ if ($InstallGleamClient) {
   Checkout-Exact $GleamClient.repo $GleamClient.rev (Join-Path $Src $GleamClient.name)
 }
 
-cargo build --release --manifest-path (Join-Path $Src "desktop-daemon\Cargo.toml")
+cargo build --release --locked --manifest-path (Join-Path $Src "desktop-daemon\Cargo.toml")
 if ($LASTEXITCODE -ne 0) { throw "desktop daemon build failed" }
 cargo build --release --manifest-path (Join-Path $Src "compiler\Cargo.toml")
 if ($LASTEXITCODE -ne 0) { throw "compiler build failed" }

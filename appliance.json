@@ -13,28 +13,28 @@
     {
       "name": "desktop-daemon",
       "repo": "beamscale/beamscale-desktop-daemon",
-      "rev": "1697b2a09c4bc23f0c06a596f09f3d6cf9b429ff",
+      "rev": "f795bd5db3a328acedc950df0f8b63b644746557",
       "kind": "rust",
       "promoted": false
     },
     {
       "name": "supervisor",
       "repo": "beamscale/bmscl-supervisor",
-      "rev": "bd92f030e844d4f8a723885b5250da65a7043a2a",
+      "rev": "3190811142b9d05966749b030b8f33fe1e350c8a",
       "kind": "erlang",
       "promoted": false
     },
     {
       "name": "compiler",
       "repo": "beamscale/bmscl-compiler",
-      "rev": "b539cc31d814d78a0c34604762c5060c9ad27e34",
+      "rev": "c21bc0b42962da820a631e63a24965782ec0bf0e",
       "kind": "rust",
       "promoted": true
     },
     {
       "name": "cli",
       "repo": "beamscale/bmscl-cli",
-      "rev": "4b959e8e7c039da8d9a3251b02cb638e2c6848b1",
+      "rev": "f3dbeb7ed243e54003e1702f44d28c6fcef6588b",
       "kind": "rust",
       "promoted": false,
       "role": "end-user-cli"
@@ -44,20 +44,20 @@
     {
       "name": "cli-gleam",
       "repo": "beamscale/bmscl-cli-gleam",
-      "rev": "0227f62605f51244f857abc021ac49b53fca4d65",
+      "rev": "09c0305f1ccf54e827cb57c55b80bdcc43496945",
       "promoted": false,
-      "role": "internal-operator-cli"
+      "role": "alternate-end-user-cli"
     },
     {
       "name": "flutter",
       "repo": "beamscale/bmscl-flutter",
-      "rev": "eb16b1862ad2026e04d62fcdc469f6acfc196ed2",
+      "rev": "446bb882fbf77fec82390c3314f1fd2c4f77db32",
       "promoted": false
     },
     {
       "name": "desktop-rust",
       "repo": "beamscale/bmscl-desktop-app.rs",
-      "rev": "778cb7e04ccb6c31f4e6048cb83e6d10f6707fe5",
+      "rev": "64607c072ccc07863b1b2cb67560d5dfbc6f16b6",
       "promoted": false
     }
   ],
@@ -74,7 +74,7 @@
     ],
     "public_ingress_ready": false,
     "origin_auth": "dedicated-remote-auth-required",
-    "promotion_reason": "The declared public BEAM ingress is not yet started by the ores-compose local graph; keep tunnel promotion blocked until origin lifecycle and dedicated remote authentication are wired."
+    "promotion_reason": "The same-BEAM loopback ingress now exists, but public promotion remains blocked until exact-head CI/release evidence and the dedicated remote-auth boundary are executed and promoted."
   },
   "update": {
     "mode": "exact-revision",
@@ -94,13 +94,16 @@
       "command": "bmscl",
       "implementation": "rust",
       "source": "components/cli",
-      "audience": "external"
+      "audience": "external",
+      "canonical": true
     },
-    "internal_operator": {
-      "command": "bmscl-internal",
+    "alternate_end_user": {
+      "command": "bmscl-gleam",
       "implementation": "gleam",
       "source": "clients/cli-gleam",
-      "audience": "internal"
+      "audience": "external",
+      "canonical": false,
+      "install": "optional"
     }
   },
   "orchestrator": {

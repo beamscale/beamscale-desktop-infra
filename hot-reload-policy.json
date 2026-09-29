@@ -30,6 +30,27 @@
     "wasm_generation",
     "declarative_only"
   ],
+  "release_activation": {
+    "runtime_family": "beam",
+    "preferred_strategy": "in_process_generation",
+    "fallback_strategy": "process_generation",
+    "allow_native_dynamic_library_hot_swap": false,
+    "code_middleware_routes_one_transaction": true,
+    "drain_timeout_ms": 300000,
+    "max_old_generations": 2,
+    "capabilities": {
+      "supports_process_generation": true,
+      "supports_in_process_generation": true,
+      "supports_parallel_generations": true,
+      "supports_pre_activation_health_check": true,
+      "supports_atomic_activation": true,
+      "supports_inflight_generation_pinning": true,
+      "supports_graceful_drain": true,
+      "supports_generation_rollback": true,
+      "supports_generation_fault_containment": true,
+      "code_loading_boundary": "beam_module"
+    }
+  },
   "invariants": {
     "routing_middleware_separate_from_compute": true,
     "route_change_restarts_standalone_server": false,
@@ -37,5 +58,5 @@
     "arbitrary_native_middleware_in_router_process": false,
     "bounded_old_generation_drain": true
   },
-  "rationale": "BeamScale is the BEAM-native product: prefer OTP route state and hot-code/release upgrades while keeping ingress and compute lifecycles separate."
+  "rationale": "BeamScale prefers OTP/BEAM module and release generations inside the long-lived VM. New code is staged and health-checked before one atomic code+middleware+route activation; old actors/requests keep their admitted generation until bounded drain. Process generations remain available for VM/native-runtime changes."
 }

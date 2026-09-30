@@ -97,7 +97,7 @@ for path in [root / "scripts" / "install-service.ps1", root / "scripts" / "unins
     if re.search(r"\b(schtasks|Register-ScheduledTask|New-ScheduledTask)\b", text, re.IGNORECASE):
         errors.append(f"{path.name}: must not own Windows service-manager implementation")
 
-for path in [bootstrap, root / "scripts" / "bootstrap.ps1"]:
+for path in [root / "scripts" / "bootstrap.sh", root / "scripts" / "bootstrap.ps1"]:
     text = path.read_text()
     if "BMSCL_SERVICE_BINARY" in text:
         errors.append(f"{path.name}: bootstrap must not export client-side service-helper authority")

@@ -79,7 +79,6 @@ export BMSCL_DAEMON_URL="http://127.0.0.1:9587"
 export BMSCL_COMPILER="$BIN/bmscl-compiler"
 export BMSCL_SUPERVISOR_ROOT="$SRC/supervisor"
 export BMSCL_CLI="$BIN/bmscl"
-export BMSCL_SERVICE_BINARY="$BIN/beamscale-service"
 export PATH="$BIN:\$PATH"
 EOF
 

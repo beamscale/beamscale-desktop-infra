@@ -92,7 +92,6 @@ $EnvLines = @(
   ('$env:BMSCL_COMPILER = ' + (Quote-PowerShellLiteral (Join-Path $Bin "bmscl-compiler.exe"))),
   ('$env:BMSCL_SUPERVISOR_ROOT = ' + (Quote-PowerShellLiteral (Join-Path $Src "supervisor"))),
   ('$env:BMSCL_CLI = ' + (Quote-PowerShellLiteral (Join-Path $Bin "bmscl.exe"))),
-  ('$env:BMSCL_SERVICE_BINARY = ' + (Quote-PowerShellLiteral (Join-Path $Bin "beamscale-service.exe"))),
   ('$env:PATH = ' + (Quote-PowerShellLiteral ($Bin + ';')) + ' + $env:PATH')
 )
 $EnvLines | Set-Content -Encoding utf8 $EnvFile

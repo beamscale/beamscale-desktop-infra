@@ -13,7 +13,7 @@
     {
       "name": "desktop-daemon",
       "repo": "beamscale/beamscale-desktop-daemon",
-      "rev": "c37d8865567c3e0f1e609fd781cdc20bc4a5be07",
+      "rev": "4e54db6f9fbb6166dd25fffa86d573843a09dcb7",
       "kind": "rust",
       "promoted": false
     },
@@ -191,7 +191,8 @@
     "listener_acquired_before_child_restore": true,
     "state_lock_acquired_before_child_restore": true,
     "numeric_loopback_only": true,
-    "duplicate_state_root_instances": false
+    "duplicate_state_root_instances": false,
+    "lock_file_symlinks_followed": false
   },
   "capability_negotiation": {
     "endpoint": "/v1/capabilities",

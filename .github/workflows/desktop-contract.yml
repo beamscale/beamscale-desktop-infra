@@ -12,6 +12,9 @@ concurrency:
   group: desktop-contract-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  COMMON_DESKTOP_REVISION: 21851fcb6ca59fe4cfe887d882dac78d90548ce4
+
 jobs:
   validate:
     runs-on: ubuntu-24.04
@@ -28,141 +31,50 @@ jobs:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
-      - name: Validate desktop appliance boundary
+      - name: Verify immutable common and quota declarations
         shell: bash
         run: |
           set -euo pipefail
-          ruby <<'RUBY'
-          require "json"
-          require "yaml"
+          test "$(jq -r '.common_layer.repository' appliance.json)" = "ORESoftware/ores-common-desktop-infra"
+          test "$(jq -r '.common_layer.status' appliance.json)" = "pinned"
+          test "$(jq -r '.common_layer.revision' appliance.json)" = "$COMMON_DESKTOP_REVISION"
+          jq -e '.promotion_gates.common_layer_pinned == true' appliance.json >/dev/null
+          jq -e '.common_layer.capabilities | index("release-activation-policy") != null' appliance.json >/dev/null
+          jq -e '.schema == "ores.desktop-quota-admission/v1" and .product == "beamscale" and .authority == "common-layer" and .identity_source == "shared-auth" and .tier_limits_source == "shared-auth-pricing-tier" and .enforcement_point == "router-middleware-before-dispatch" and .local_counter_backend == "memory" and .jwt_live_counters == false and .quota_epoch_claim == true and .monotonic_admission_fence == true and .http_backpressure == true and .rpc_backpressure == true and .bounded_concurrency == true and .bounded_queue == true and .ingress_safety_only == true' quota-admission.json >/dev/null
+          test "$(jq -c '.required_request_windows_seconds | sort' quota-admission.json)" = '[60,600,3600]'
+          jq -e '.cluster_counter_backend == "redis" or .cluster_counter_backend == "durable-actor"' quota-admission.json >/dev/null
 
-          compose_path = ".ores-compose.yaml"
-          abort "missing #{compose_path}" unless File.file?(compose_path)
-          appliance = JSON.parse(File.read("appliance.json"))
-          compose = YAML.safe_load(File.read(compose_path), permitted_classes: [], permitted_symbols: [], aliases: false)
+      - name: Require approved common desktop read credential
+        shell: bash
+        env:
+          COMMON_READ_TOKEN: ${{ secrets.ORE_SOURCE_PAT || secrets.FLEET_GITHUB_READ_TOKEN || secrets.TEST_FLEET_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$COMMON_READ_TOKEN"
 
-          abort "wrong appliance schema" unless appliance["schema"] == "ores.desktop-appliance/v1"
-          abort "wrong compose schema" unless compose["schema_version"] == "ores.compose.v1"
-          abort "orchestrator must be ores-compose" unless appliance.dig("orchestrator", "engine") == "ores-compose"
-          abort "canonical compose path drifted" unless appliance.dig("orchestrator", "config") == compose_path
-          abort "unexpected public IP requirement" unless appliance.dig("host", "requires_public_ip") == false
+      - name: Check out exact common desktop conformance authority
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ORESoftware/ores-common-desktop-infra
+          ref: ${{ env.COMMON_DESKTOP_REVISION }}
+          path: tmp/dev/ores-common-desktop-infra
+          token: ${{ secrets.ORE_SOURCE_PAT || secrets.FLEET_GITHUB_READ_TOKEN || secrets.TEST_FLEET_READ_TOKEN }}
+          persist-credentials: false
 
-          daemon_listen = appliance.dig("host", "daemon_listen").to_s
-          listen_match = daemon_listen.match(/\A127\.0\.0\.1:(\d+)\z/)
-          abort "daemon_listen must be numeric IPv4 loopback with non-zero port" unless listen_match && listen_match[1].to_i.between?(1, 65_535)
+      - name: Verify exact common desktop revision
+        run: test "$(git -C tmp/dev/ores-common-desktop-infra rev-parse HEAD)" = "$COMMON_DESKTOP_REVISION"
 
-          update = appliance.fetch("update")
-          abort "updates must use immutable revisions" unless update["mode"] == "exact-revision" && update["allow_mutable_latest"] == false
+      - name: Install exact Rust toolchain
+        run: |
+          rustup toolchain install 1.82.0 --profile minimal
+          rustup default 1.82.0
+          rustc --version
+          cargo --version
 
-          common = appliance.fetch("common_layer")
-          gates = appliance.fetch("promotion_gates")
-          abort "common desktop repo identity drifted" unless common["repository"] == "ORESoftware/ores-common-desktop-infra"
-          abort "common desktop checkout must stay under tmp/dev" unless common["checkout_dir"] == "tmp/dev/ores-common-desktop-infra"
-          abort "common layer must be pinned" unless common["status"] == "pinned"
-          revision = common["revision"].to_s
-          abort "common revision must be immutable 40-hex" unless revision.match?(/\A[0-9a-f]{40}\z/)
-          abort "common layer pin gate must be true" unless gates["common_layer_pinned"] == true
-          abort "common CI gate must be explicit" unless [true, false].include?(gates["common_layer_ci_verified"])
-
-          required_caps = %w[
-            consumer-validation loopback-policy secret-file-policy cloudflare-policy
-            update-policy process-lifecycle health-readiness structured-logging
-            desktop-auth-shell mixed-compute-plane runtime-isolation stable-ingress
-            quota-admission cross-platform-packaging typed-mutation-auth
-            middleware-executor-isolation runtime-adapter-abi immutable-deployment-bundle
-            durable-generation-state desktop-event-stream conformance-suite hot-reload-backends
-          ]
-          capabilities = common.fetch("capabilities")
-          abort "common desktop capability set incomplete" unless (required_caps - capabilities).empty?
-
-          quota_path = appliance.fetch("quota_admission_profile")
-          abort "quota profile path drifted" unless quota_path == "quota-admission.json"
-          quota = JSON.parse(File.read(quota_path))
-          abort "wrong quota schema" unless quota["schema"] == "ores.desktop-quota-admission/v1"
-          abort "quota product mismatch" unless quota["product"] == appliance["product"]
-          abort "quota authority must be common layer" unless quota["authority"] == "common-layer"
-          abort "quota identity must come from shared-auth" unless quota["identity_source"] == "shared-auth"
-          abort "tier limits must come from shared-auth pricing" unless quota["tier_limits_source"] == "shared-auth-pricing-tier"
-          abort "quota must run before dispatch" unless quota["enforcement_point"] == "router-middleware-before-dispatch"
-          abort "pricing windows must be 1m/10m/1h" unless quota["required_request_windows_seconds"].sort == [60, 600, 3600]
-          abort "unsupported clustered quota backend" unless %w[redis durable-actor].include?(quota["cluster_counter_backend"])
-          abort "local quota backend must be memory" unless quota["local_counter_backend"] == "memory"
-          abort "JWT live counters are forbidden" unless quota["jwt_live_counters"] == false
-          abort "quota epoch claim required" unless quota["quota_epoch_claim"] == true
-          abort "monotonic admission fence required" unless quota["monotonic_admission_fence"] == true
-          %w[http_backpressure rpc_backpressure bounded_concurrency bounded_queue ingress_safety_only].each do |field|
-            abort "quota invariant #{field} must be true" unless quota[field] == true
-          end
-          abort "quota wiring gate must be explicit" unless [true, false].include?(gates["quota_admission_wired"])
-
-          hot_reload_path = appliance.fetch("hot_reload_policy")
-          abort "hot reload policy path drifted" unless hot_reload_path == "hot-reload-policy.json"
-          hot_reload = JSON.parse(File.read(hot_reload_path))
-          abort "wrong hot reload schema" unless hot_reload["schema"] == "ores.desktop-hot-reload/v1"
-          abort "hot reload product mismatch" unless hot_reload["product"] == appliance["product"]
-          defaults = hot_reload.fetch("default")
-          abort "route drain timeout must be bounded" unless defaults["route_drain_timeout_ms"].is_a?(Integer) && defaults["route_drain_timeout_ms"].between?(1, 86_400_000)
-          abort "old generation retention must be bounded" unless defaults["max_old_generations"].is_a?(Integer) && defaults["max_old_generations"].between?(1, 4)
-          invariants = hot_reload.fetch("invariants")
-          abort "routing/middleware isolation weakened" unless invariants["routing_middleware_separate_from_compute"] == true
-          abort "route reload may not restart standalone server" unless invariants["route_change_restarts_standalone_server"] == false
-          abort "route reload may not restart lambda workers" unless invariants["route_change_restarts_lambda_workers"] == false
-          abort "arbitrary native middleware may not share router process" unless invariants["arbitrary_native_middleware_in_router_process"] == false
-          abort "old generation draining must be bounded" unless invariants["bounded_old_generation_drain"] == true
-
-          cloudflare = appliance.fetch("cloudflare")
-          abort "cloudflare credentials may not live in repo" unless cloudflare["credentials_in_repo"] == false
-          case cloudflare["mode"]
-          when "gated"
-            abort "gated ingress cannot be public-ready" unless cloudflare["public_ingress_ready"] == false
-            abort "gated ingress requires separate remote auth" unless cloudflare["origin_auth"] == "dedicated-remote-auth-required"
-            abort "gated ingress requires blocker text" if cloudflare["promotion_reason"].to_s.empty?
-          when "remotely-managed"
-            abort "remote ingress requires dedicated auth" unless cloudflare["origin_auth"] == "dedicated-remote-auth"
-            abort "remote ingress must be public-ready" unless cloudflare["public_ingress_ready"] == true
-          when "not-required"
-            abort "not-required ingress must remain private" unless cloudflare["public_ingress_ready"] == false
-          else
-            abort "unknown cloudflare mode"
-          end
-
-          source = compose.fetch("source")
-          source_commit = source.fetch("commit").to_s
-          abort "source commit must be immutable 40-hex" unless source_commit.match?(/\A[0-9a-f]{40}\z/)
-          abort "checkout must live under tmp/dev" unless source.fetch("checkout_dir").start_with?("tmp/dev/")
-          abort "source must be credential-free GitHub HTTPS" unless source.fetch("repository").match?(%r{\Ahttps://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git\z})
-
-          daemon = compose.fetch("services").fetch("daemon")
-          abort "daemon must use host runtime" unless daemon["runtime"] == "host"
-          build = daemon.fetch("build")
-          abort "daemon must have exactly one cargo release build" unless build.length == 1 && build.first[0, 3] == ["cargo", "build", "--release"]
-          lock_gate = gates["daemon_lockfile_committed"]
-          abort "daemon lockfile gate must be explicit" unless [true, false].include?(lock_gate)
-          if lock_gate
-            abort "committed lockfile gate requires --locked build" unless build.first.include?("--locked")
-          end
-          command = daemon.fetch("command")
-          abort "daemon must run built release binary directly" unless command.length == 1 && command.first.start_with?("./target/release/")
-          abort "local compose may not launch a public tunnel" if compose.fetch("services").key?("tunnel")
-
-          rendered = File.read(compose_path)
-          abort "non-loopback bind found" if rendered.include?("0.0.0.0") || rendered.include?("[::]")
-          if daemon["healthcheck"]
-            health = daemon.dig("healthcheck", "command").join(" ")
-            abort "healthcheck must target appliance loopback daemon" unless health.include?("http://#{daemon_listen}/")
-          end
-
-          if (component = Array(appliance["components"]).find { |entry| entry["name"] == "desktop-daemon" })
-            source_repo = source.fetch("repository").sub(%r{\Ahttps://github\.com/}, "").sub(/\.git\z/, "")
-            abort "desktop-daemon component repo/source mismatch" unless component["repo"] == source_repo
-            abort "desktop-daemon component rev/source mismatch" unless component["rev"] == source_commit
-          end
-
-          if appliance["channel"] == "stable"
-            abort "stable requires common CI evidence" unless gates["common_layer_ci_verified"] == true
-            abort "stable requires quota admission wiring" unless gates["quota_admission_wired"] == true
-            abort "stable requires committed daemon lockfile" unless lock_gate == true
-          end
-
-          puts "desktop appliance contract OK: #{appliance.fetch("product")}"
-          RUBY
+      - name: Run shared Rust appliance conformance
+        run: |
+          cargo run --locked \
+            --manifest-path tmp/dev/ores-common-desktop-infra/Cargo.toml \
+            -p ores-common-desktop-conformance \
+            --bin validate_appliance_contract \
+            -- "$GITHUB_WORKSPACE"

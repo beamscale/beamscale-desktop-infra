@@ -109,6 +109,23 @@ for field in (
 if singleton.get("duplicate_state_root_instances") is not False:
     errors.append("two daemon processes must not share one state root")
 
+capabilities = data.get("capability_negotiation", {})
+if capabilities.get("endpoint") != "/v1/capabilities":
+    errors.append("desktop capability negotiation endpoint must be /v1/capabilities")
+if capabilities.get("authentication") != "normal-desktop-token":
+    errors.append("capability negotiation must use the normal desktop token")
+if capabilities.get("operator_service_feature") != "operator-service-rpc":
+    errors.append("operator service feature name drifted")
+for field in (
+    "service_clients_require_preflight",
+    "operator_token_loaded_after_preflight",
+    "response_secret_free",
+):
+    if capabilities.get(field) is not True:
+        errors.append(f"capability negotiation field {field} must be true")
+if capabilities.get("feature_detection_by_404") is not False:
+    errors.append("clients must not use 404 responses as capability negotiation")
+
 profiles = data.get("cli_profiles", {})
 end_user = profiles.get("end_user", {})
 alternate = profiles.get("alternate_end_user", {})
@@ -166,6 +183,7 @@ for pending_gate in (
     "operator_service_authority_wired",
     "bounded_child_logs_wired",
     "daemon_singleton_verified",
+    "capability_negotiation_verified",
 ):
     if pending_gate not in gates:
         errors.append(f"missing promotion gate: {pending_gate}")

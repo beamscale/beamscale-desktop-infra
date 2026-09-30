@@ -108,6 +108,8 @@ for field in (
         errors.append(f"daemon singleton field {field} must be true")
 if singleton.get("duplicate_state_root_instances") is not False:
     errors.append("two daemon processes must not share one state root")
+if singleton.get("lock_file_symlinks_followed") is not False:
+    errors.append("daemon singleton lock file must not follow symlinks")
 
 capabilities = data.get("capability_negotiation", {})
 if capabilities.get("endpoint") != "/v1/capabilities":

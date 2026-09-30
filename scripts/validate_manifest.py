@@ -48,6 +48,52 @@ if data.get("update", {}).get("allow_mutable_latest") is not False:
 if data.get("cloudflare", {}).get("credentials_in_repo") is not False:
     errors.append("Cloudflare credentials must stay out of repo")
 
+service = data.get("service_authority", {})
+if service.get("owner") != "desktop-daemon":
+    errors.append("persistent service authority must belong to desktop-daemon")
+if service.get("transport") != "operator-authenticated-loopback-rpc":
+    errors.append("persistent service lifecycle must use operator-authenticated loopback RPC")
+if service.get("operator_token_file") != "operator-token":
+    errors.append("operator service authority must use the distinct private operator-token")
+for field in (
+    "client_helper_execution",
+    "client_helper_selection",
+    "client_service_argv",
+):
+    if service.get(field) is not False:
+        errors.append(f"service authority field {field} must be false")
+for field in (
+    "mutation_idempotency",
+    "mutation_maintenance_gate",
+    "uninstall_preserves_current_daemon",
+):
+    if service.get(field) is not True:
+        errors.append(f"service authority field {field} must be true")
+if service.get("service_helper") != "daemon-packaged-sibling":
+    errors.append("service helper must be selected only as the daemon-packaged sibling")
+if service.get("install_mode") != "register-without-competing-start":
+    errors.append("daemon-mediated service install must not launch a competing daemon")
+
+logs = data.get("child_logs", {})
+if logs.get("owner") != "desktop-daemon":
+    errors.append("child log capture must be daemon-owned")
+if logs.get("retention_hours") != 6:
+    errors.append("child log retention must remain exactly six hours")
+if logs.get("max_segment_bytes") != 4 * 1024 * 1024:
+    errors.append("child log segment cap must remain 4 MiB")
+if logs.get("max_parts_per_hour_per_stream") != 4:
+    errors.append("child log hourly part cap must remain four")
+if sorted(logs.get("components", [])) != ["runtime", "tunnel"]:
+    errors.append("child logs must be limited to runtime and tunnel")
+if sorted(logs.get("streams", [])) != ["stderr", "stdout"]:
+    errors.append("child logs must capture stdout and stderr")
+if logs.get("unix_directory_mode") != "0700" or logs.get("unix_file_mode") != "0600":
+    errors.append("Unix child-log permissions must remain 0700 directories / 0600 files")
+if logs.get("raw_log_api") is not False:
+    errors.append("raw child logs must not be exposed through the daemon API")
+if logs.get("drain_after_storage_saturation") is not True:
+    errors.append("child pipes must continue draining after the bounded log budget saturates")
+
 profiles = data.get("cli_profiles", {})
 end_user = profiles.get("end_user", {})
 alternate = profiles.get("alternate_end_user", {})
@@ -99,7 +145,12 @@ if 'BMSCL_DAEMON_LISTEN: "127.0.0.1:9587"' not in compose:
 gates = data.get("promotion_gates", {})
 if gates.get("daemon_lockfile_committed") is not True:
     errors.append("desktop daemon lockfile gate must be true")
-for pending_gate in ("compiler_lockfile_committed", "cli_lockfile_committed"):
+for pending_gate in (
+    "compiler_lockfile_committed",
+    "cli_lockfile_committed",
+    "operator_service_authority_wired",
+    "bounded_child_logs_wired",
+):
     if pending_gate not in gates:
         errors.append(f"missing promotion gate: {pending_gate}")
 

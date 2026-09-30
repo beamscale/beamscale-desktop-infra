@@ -13,14 +13,14 @@
     {
       "name": "desktop-daemon",
       "repo": "beamscale/beamscale-desktop-daemon",
-      "rev": "2a2808e239f933b08b81713bfee0adcafeefd67d",
+      "rev": "61db556c5d2f4258dbcdad2157b7b117afcedd4e",
       "kind": "rust",
       "promoted": false
     },
     {
       "name": "supervisor",
       "repo": "beamscale/bmscl-supervisor",
-      "rev": "3190811142b9d05966749b030b8f33fe1e350c8a",
+      "rev": "bf471b312ba2716fcabd58fb99843a71577b3dff",
       "kind": "erlang",
       "promoted": false
     },
@@ -34,7 +34,7 @@
     {
       "name": "cli",
       "repo": "beamscale/bmscl-cli",
-      "rev": "f3dbeb7ed243e54003e1702f44d28c6fcef6588b",
+      "rev": "91c54e4aad183360b5cdcdb7984aeea438d12f7b",
       "kind": "rust",
       "promoted": false,
       "role": "end-user-cli"
@@ -44,20 +44,20 @@
     {
       "name": "cli-gleam",
       "repo": "beamscale/bmscl-cli-gleam",
-      "rev": "09c0305f1ccf54e827cb57c55b80bdcc43496945",
+      "rev": "fea69e1520e658175ed45ec02a4604a152cd89b3",
       "promoted": false,
       "role": "alternate-end-user-cli"
     },
     {
       "name": "flutter",
       "repo": "beamscale/bmscl-flutter",
-      "rev": "446bb882fbf77fec82390c3314f1fd2c4f77db32",
+      "rev": "ef46b0b2acd9a487f6783116e8c80ef730451053",
       "promoted": false
     },
     {
       "name": "desktop-rust",
       "repo": "beamscale/bmscl-desktop-app.rs",
-      "rev": "ae2ca2df99d25318840a4545dd11bdbd95a7d3a0",
+      "rev": "2f82d38f693877a5b600c928cf71caab3ebd6a26",
       "promoted": false
     }
   ],
@@ -91,7 +91,9 @@
     "common_layer_ci_verified": false,
     "compiler_lockfile_committed": false,
     "cli_lockfile_committed": false,
-    "quota_admission_wired": false
+    "quota_admission_wired": false,
+    "operator_service_authority_wired": false,
+    "bounded_child_logs_wired": false
   },
   "cli_profiles": {
     "end_user": {
@@ -149,5 +151,36 @@
       "update-policy"
     ]
   },
-  "hot_reload_policy": "hot-reload-policy.json"
+  "hot_reload_policy": "hot-reload-policy.json",
+  "service_authority": {
+    "owner": "desktop-daemon",
+    "transport": "operator-authenticated-loopback-rpc",
+    "operator_token_file": "operator-token",
+    "service_helper": "daemon-packaged-sibling",
+    "client_helper_execution": false,
+    "client_helper_selection": false,
+    "client_service_argv": false,
+    "mutation_idempotency": true,
+    "mutation_maintenance_gate": true,
+    "install_mode": "register-without-competing-start",
+    "uninstall_preserves_current_daemon": true
+  },
+  "child_logs": {
+    "owner": "desktop-daemon",
+    "retention_hours": 6,
+    "max_segment_bytes": 4194304,
+    "max_parts_per_hour_per_stream": 4,
+    "components": [
+      "runtime",
+      "tunnel"
+    ],
+    "streams": [
+      "stdout",
+      "stderr"
+    ],
+    "unix_directory_mode": "0700",
+    "unix_file_mode": "0600",
+    "raw_log_api": false,
+    "drain_after_storage_saturation": true
+  }
 }

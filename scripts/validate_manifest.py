@@ -94,6 +94,21 @@ if logs.get("raw_log_api") is not False:
 if logs.get("drain_after_storage_saturation") is not True:
     errors.append("child pipes must continue draining after the bounded log budget saturates")
 
+singleton = data.get("daemon_singleton", {})
+if singleton.get("state_root_lock") != "daemon.lock":
+    errors.append("daemon singleton must use the private daemon.lock state-root boundary")
+if singleton.get("lock_authority") != "os-advisory-file-lock":
+    errors.append("daemon singleton must use an OS advisory file lock rather than PID text")
+for field in (
+    "listener_acquired_before_child_restore",
+    "state_lock_acquired_before_child_restore",
+    "numeric_loopback_only",
+):
+    if singleton.get(field) is not True:
+        errors.append(f"daemon singleton field {field} must be true")
+if singleton.get("duplicate_state_root_instances") is not False:
+    errors.append("two daemon processes must not share one state root")
+
 profiles = data.get("cli_profiles", {})
 end_user = profiles.get("end_user", {})
 alternate = profiles.get("alternate_end_user", {})
@@ -150,6 +165,7 @@ for pending_gate in (
     "cli_lockfile_committed",
     "operator_service_authority_wired",
     "bounded_child_logs_wired",
+    "daemon_singleton_verified",
 ):
     if pending_gate not in gates:
         errors.append(f"missing promotion gate: {pending_gate}")

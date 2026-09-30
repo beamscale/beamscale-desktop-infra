@@ -3,7 +3,7 @@ project: beamscale-desktop
 allow_lazy_start: false
 source:
   repository: https://github.com/beamscale/beamscale-desktop-daemon.git
-  commit: 2a2808e239f933b08b81713bfee0adcafeefd67d
+  commit: 4e54db6f9fbb6166dd25fffa86d573843a09dcb7
   checkout_dir: tmp/dev/beamscale-desktop-daemon
 services:
   daemon:

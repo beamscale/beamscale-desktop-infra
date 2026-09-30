@@ -53,14 +53,25 @@ jobs:
           assert origin in readme, f'{origin} missing from README'
           assert origin in cloudflare, f'{origin} missing from cloudflare config'
           PY
-      - name: validate Rust service-manager authority
+      - name: validate daemon-owned service-manager authority
         run: |
           set -euo pipefail
-          grep -F 'BMSCL_SERVICE_BINARY' scripts/install-service.sh scripts/uninstall-service.sh
-          grep -F 'BMSCL_SERVICE_BINARY' scripts/install-service.ps1 scripts/uninstall-service.ps1
+          grep -F 'local service install' scripts/install-service.sh
+          grep -F 'local service uninstall' scripts/uninstall-service.sh
+          grep -F 'local","service","install' scripts/install-service.ps1
+          grep -F 'local service uninstall' scripts/uninstall-service.ps1
           grep -F 'beamscale-service' scripts/bootstrap.sh scripts/bootstrap.ps1
-          if grep -REn '\\b(systemctl|launchctl|schtasks|Register-ScheduledTask|New-ScheduledTask)\\b'             scripts/install-service.sh scripts/uninstall-service.sh             scripts/install-service.ps1 scripts/uninstall-service.ps1; then
-            echo "service wrappers must delegate to Rust beamscale-service" >&2
+          if grep -RFn 'BMSCL_SERVICE_BINARY' \
+            scripts/bootstrap.sh scripts/bootstrap.ps1 \
+            scripts/install-service.sh scripts/uninstall-service.sh \
+            scripts/install-service.ps1 scripts/uninstall-service.ps1; then
+            echo "clients/bootstrap must not select the packaged service helper" >&2
+            exit 1
+          fi
+          if grep -REn '\\b(systemctl|launchctl|schtasks|Register-ScheduledTask|New-ScheduledTask)\\b' \
+            scripts/install-service.sh scripts/uninstall-service.sh \
+            scripts/install-service.ps1 scripts/uninstall-service.ps1; then
+            echo "service wrappers must delegate through daemon operator RPC" >&2
             exit 1
           fi
       - name: ensure one desired-state authority

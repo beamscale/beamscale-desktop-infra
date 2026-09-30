@@ -121,7 +121,7 @@
     "repository": "ORESoftware/ores-common-desktop-infra",
     "checkout_dir": "tmp/dev/ores-common-desktop-infra",
     "status": "pinned",
-    "revision": "253f019383ae947474bb978f9105e02749bf7968",
+    "revision": "21851fcb6ca59fe4cfe887d882dac78d90548ce4",
     "capabilities": [
       "consumer-validation",
       "loopback-policy",
@@ -144,7 +144,8 @@
       "durable-generation-state",
       "desktop-event-stream",
       "conformance-suite",
-      "hot-reload-backends"
+      "hot-reload-backends",
+      "release-activation-policy"
     ]
   },
   "hot_reload_policy": "hot-reload-policy.json"

@@ -13,7 +13,7 @@
     {
       "name": "desktop-daemon",
       "repo": "beamscale/beamscale-desktop-daemon",
-      "rev": "9c616c8e12037163594045c6545ea3def9feda3f",
+      "rev": "c37d8865567c3e0f1e609fd781cdc20bc4a5be07",
       "kind": "rust",
       "promoted": false
     },
@@ -34,7 +34,7 @@
     {
       "name": "cli",
       "repo": "beamscale/bmscl-cli",
-      "rev": "91c54e4aad183360b5cdcdb7984aeea438d12f7b",
+      "rev": "fd1fd11b5a272352ca21e928073025bfde29a097",
       "kind": "rust",
       "promoted": false,
       "role": "end-user-cli"
@@ -51,13 +51,13 @@
     {
       "name": "flutter",
       "repo": "beamscale/bmscl-flutter",
-      "rev": "ef46b0b2acd9a487f6783116e8c80ef730451053",
+      "rev": "43d085280be35b315d4ec595fb47151129a54ec5",
       "promoted": false
     },
     {
       "name": "desktop-rust",
       "repo": "beamscale/bmscl-desktop-app.rs",
-      "rev": "2f82d38f693877a5b600c928cf71caab3ebd6a26",
+      "rev": "9533b6ebe82cf05fe0254ac3393fa7609acd3d33",
       "promoted": false
     }
   ],
@@ -94,7 +94,8 @@
     "quota_admission_wired": false,
     "operator_service_authority_wired": false,
     "bounded_child_logs_wired": false,
-    "daemon_singleton_verified": false
+    "daemon_singleton_verified": false,
+    "capability_negotiation_verified": false
   },
   "cli_profiles": {
     "end_user": {
@@ -191,5 +192,14 @@
     "state_lock_acquired_before_child_restore": true,
     "numeric_loopback_only": true,
     "duplicate_state_root_instances": false
+  },
+  "capability_negotiation": {
+    "endpoint": "/v1/capabilities",
+    "authentication": "normal-desktop-token",
+    "operator_service_feature": "operator-service-rpc",
+    "service_clients_require_preflight": true,
+    "operator_token_loaded_after_preflight": true,
+    "feature_detection_by_404": false,
+    "response_secret_free": true
   }
 }

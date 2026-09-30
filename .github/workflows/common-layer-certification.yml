@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ORESoftware/ores-common-desktop-infra
-          ref: c98aee842535429bc07b5e4437a2fb84d8f00d25
+          ref: 21851fcb6ca59fe4cfe887d882dac78d90548ce4
           token: ${{ secrets.FLEET_GITHUB_READ_TOKEN || secrets.TEST_FLEET_READ_TOKEN }}
           path: tmp/dev/ores-common-desktop-infra
           persist-credentials: false
@@ -41,12 +41,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C tmp/dev/ores-common-desktop-infra rev-parse HEAD)" = "c98aee842535429bc07b5e4437a2fb84d8f00d25"
+          test "$(git -C tmp/dev/ores-common-desktop-infra rev-parse HEAD)" = "21851fcb6ca59fe4cfe887d882dac78d90548ce4"
 
       - name: Compile and execute shared Rust consumer checker
         env:
-          ORES_COMMON_DESKTOP_EXPECTED_REVISION: c98aee842535429bc07b5e4437a2fb84d8f00d25
+          ORES_COMMON_DESKTOP_EXPECTED_REVISION: 21851fcb6ca59fe4cfe887d882dac78d90548ce4
         run: |
           cargo run --locked \
             --manifest-path tmp/dev/ores-common-desktop-infra/daemon/rust/Cargo.toml \
             --bin ores-common-desktop-consumer-check
+
+      - name: Execute shared Rust appliance conformance
+        run: |
+          cargo run --locked \
+            --manifest-path tmp/dev/ores-common-desktop-infra/Cargo.toml \
+            -p ores-common-desktop-conformance \
+            --bin validate_appliance_contract \
+            -- .

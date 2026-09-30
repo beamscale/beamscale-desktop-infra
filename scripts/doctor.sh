@@ -49,7 +49,11 @@ STATE="${BMSCL_DESKTOP_STATE:-$ROOT/.desktop}"
 if [[ -f "$STATE/env" ]]; then
   # shellcheck disable=SC1090
   source "$STATE/env"
-  for binary in     "$STATE/bin/beamscale-desktop-daemon"     "${BMSCL_SERVICE_BINARY:-$STATE/bin/beamscale-service}"     "${BMSCL_CLI:-$STATE/bin/bmscl}"     "$STATE/bin/bmscl-compiler"; do
+  for binary in \
+    "$STATE/bin/beamscale-desktop-daemon" \
+    "$STATE/bin/beamscale-service" \
+    "${BMSCL_CLI:-$STATE/bin/bmscl}" \
+    "$STATE/bin/bmscl-compiler"; do
     if [[ -x "$binary" ]]; then
       printf 'ok   %s\n' "$binary"
     else
@@ -57,6 +61,23 @@ if [[ -f "$STATE/env" ]]; then
       failed=1
     fi
   done
+  if curl --fail --silent http://127.0.0.1:9587/health >/dev/null 2>&1; then
+    if ! "${BMSCL_CLI:-$STATE/bin/bmscl}" local doctor >/dev/null; then
+      echo "FAIL daemon local doctor" >&2
+      failed=1
+    else
+      echo "ok   daemon local doctor"
+    fi
+    if ! "${BMSCL_CLI:-$STATE/bin/bmscl}" local service status >/dev/null; then
+      echo "FAIL daemon operator service status" >&2
+      failed=1
+    else
+      echo "ok   daemon operator service status"
+    fi
+  else
+    echo "skip daemon RPC checks (daemon not running)"
+  fi
+
   if [[ "${BMSCL_INSTALL_GLEAM_CLIENT:-0}" == "1" ]]; then
     gleam_cli="$STATE/bin/bmscl-gleam"
     if [[ -x "$gleam_cli" ]]; then

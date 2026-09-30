@@ -40,7 +40,7 @@ if (Test-Path $EnvFile) {
   . $EnvFile
   $Binaries = @(
     (Join-Path $State "bin\beamscale-desktop-daemon.exe"),
-    $env:BMSCL_SERVICE_BINARY,
+    (Join-Path $State "bin\beamscale-service.exe"),
     $env:BMSCL_CLI,
     (Join-Path $State "bin\bmscl-compiler.exe")
   )
@@ -48,6 +48,22 @@ if (Test-Path $EnvFile) {
     if ($binary -and (Test-Path $binary)) { Write-Host ("ok   " + $binary) }
     else { Write-Error ("MISS " + $binary); $Missing += $binary }
   }
+  $DaemonHealthy = $false
+  try {
+    Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:9587/health" | Out-Null
+    $DaemonHealthy = $true
+  } catch {
+    Write-Host "skip daemon RPC checks (daemon not running)"
+  }
+  if ($DaemonHealthy) {
+    & $env:BMSCL_CLI local doctor | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Error "FAIL daemon local doctor"; $Missing += "daemon-doctor" }
+    else { Write-Host "ok   daemon local doctor" }
+    & $env:BMSCL_CLI local service status | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Error "FAIL daemon operator service status"; $Missing += "daemon-service-status" }
+    else { Write-Host "ok   daemon operator service status" }
+  }
+
   if ($env:BMSCL_INSTALL_GLEAM_CLIENT -eq "1") {
     $GleamCli = Join-Path $State "bin\bmscl-gleam.cmd"
     if (Test-Path $GleamCli) { Write-Host ("ok   " + $GleamCli) }
